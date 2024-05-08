@@ -1,5 +1,7 @@
 #!/bin/bash
-
+# ==========================================================
+# BASH and prompt Configurations
+# ==========================================================
 # Colored GCC warnings and errors
 export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 force_color_prompt=yes
@@ -135,7 +137,7 @@ echo "$(green "This is green text.")"
 echo "$(purple "This is purple text.")"
 echo -e "\033[0m" # Reset color to default
 # ==========================================================
-# Aliases and Git Configurations
+# Aliases
 # ==========================================================
 # This section defines various aliases and configurations related to Git.
 # Aliases provide shorthand commands for common Git operations, enhancing productivity.
@@ -185,8 +187,6 @@ function unstage() {
   git reset HEAD -- $1
 }
 git config --global core.fsmonitor = true  # enable fsmonitor-watchman deamon for git IPC
-
-
 # ==========================================================
 # Custom Functions
 # ==========================================================
