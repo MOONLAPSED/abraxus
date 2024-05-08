@@ -33,3 +33,34 @@ wsl:
  - `cd chrome`
  - `sudo wget https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb`
  - `sudo dpkg -i google-chrome-stable_current_amd64.deb`
+ - """`which google-chrome-stable` make a sym-link in ~/chrome/""" `ln -s /usr/bin/google-chrome-stable ~/chrome/google-chrome`
+ - `cd ..` 
+ - `mkdir .nvidia`
+ - `cd .nvidia`
+ - `sudo apt-key del 7fa2af80`
+ - `wget https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/cuda-wsl-ubuntu.pin`
+ - `sudo mv cuda-wsl-ubuntu.pin /etc/apt/preferences.d/cuda-repository-pin-600`
+ - `sudo apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/3bf863cc.pub`
+ - `sudo add-apt-repository 'deb https://developer.download.nvidia.com/compute/cuda/repos/wsl-ubuntu/x86_64/ /'`
+ - `sudo apt-get update`
+ - `sudo apt-get -y install cuda`
+ - `sudo reboot`
+ - `pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121`
+#### only after doing all of the above should you proceed to install conda or mess with systems python3
+ - `curl -O https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh`
+ - `bash Miniconda3-latest-Linux-x86_64.sh -b -p ~/miniconda`
+ - `echo 'export PATH="$HOME/miniconda/bin:$PATH"' >> ~/.bashrc`
+ - `source .bashrc`
+ - `conda install conda`
+ - `conda update conda`
+ - `conda init bash`
+ - `exit`
+#### conda --version to confirm, then proceed
+ - `wsl shutdown`
+ - `wsl`
+ - `cd ~`
+ - `conda create -n 3ten python="3.10"`
+ - `conda activate 3ten`
+ - `conda install pip`
+ - `pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121`
+ - `conda install cudatoolkit`
