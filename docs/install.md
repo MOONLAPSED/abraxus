@@ -52,7 +52,6 @@ wsl:
  - `echo 'export PATH="$HOME/miniconda/bin:$PATH"' >> ~/.bashrc`
  - `source .bashrc`
  - `conda install conda`
- - `conda update conda`
  - `conda init bash`
  - `exit`
 #### conda --version to confirm, then proceed
@@ -64,3 +63,14 @@ wsl:
  - `conda install pip`
  - `pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121`
  - `conda install cudatoolkit`
+
+
+
+
+
+#### Windows11 OCR
+https://learn.microsoft.com/en-us/windows/powertoys/text-extractor
+
+    snipping tool OCR char recognition native in-windows eng-US (admin powershell):
+    $Capability = Get-WindowsCapability -Online | Where-Object { $_.Name -Like 'Language.OCR*en-US*' }
+    $Capability | Remove-WindowsCapability -Online
