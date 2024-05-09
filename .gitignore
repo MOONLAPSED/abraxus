@@ -1,0 +1,17 @@
+# Ignore system and user-specific files
+.bash_history
+.bash_logout
+.cache/
+.conda/
+.config/
+.gitconfig
+.local/
+.motd_shown
+.nvm/
+.pki/
+.profile
+.python_history
+.sudo_as_admin_successful
+.wget-hsts
+chrome/
+miniconda/
