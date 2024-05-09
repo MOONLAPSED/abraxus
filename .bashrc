@@ -320,6 +320,65 @@ popx() {
   done
   pwd
 }
+# ----------------------------------------------------------
+# bp - Backport non-hidden files and directories to parent directory
+#
+# Usage:
+#   bp
+#
+# This function copies all non-hidden files and directories from the current
+# directory to the parent directory.
+#
+# Example:
+#   bp
+#
+bp() {
+    cp -r ./* ../
+}
+
+# .bp - Backport all files and directories to parent directory
+#
+# Usage:
+#   .bp
+#
+# This function copies all files and directories (including hidden ones) from the
+# current directory to the parent directory.
+#
+# After copying the files and directories, it prompts the user to confirm whether
+# to delete the current directory if it's empty. If the user confirms, it deletes
+# the current directory and changes to the parent directory.
+#
+# Example:
+#   .bp
+#
+.bp() {
+    local current_dir="$(pwd)"
+    local parent_dir="$(dirname "$current_dir")"
+
+    # Check if the current directory is not the root directory
+    if [[ "$current_dir" == "/" ]]; then
+        echo "Cannot move the root directory."
+        return 1
+    fi
+
+    # Copy all files and directories (including hidden ones)
+    cp -rv --no-preserve=mode ./* "$parent_dir" || return
+
+    # Check if the current directory is empty
+    if [ "$(ls -A)" ]; then
+        echo "Some files or directories could not be moved."
+    else
+        read -p "The current directory is empty. Delete it and move to the parent directory? (y/N) " -n 1 -r
+        echo
+        if [[ $REPLY =~ ^[Yy]$ ]]; then
+            rm -rf "$current_dir"
+            cd "$parent_dir" || return
+            echo "Current directory deleted and moved to the parent directory."
+        else
+            echo "Current directory not deleted."
+        fi
+    fi
+}
 # ==========================================================
 # Init & $PATH
 # ==========================================================
