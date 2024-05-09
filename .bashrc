@@ -364,21 +364,18 @@ bp() {
 
     # Copy all files and directories (including hidden ones)
     shopt -s dotglob # Enable matching dotfiles
-    cp -rv --no-preserve=mode ./* "$parent_dir" || return
+    for item in ./*; do
+        if [[ -e "$item" ]]; then
+            cp -rv --no-preserve=mode "$item" "$parent_dir" || return
+            rm -rf "$item"
+        fi
+    done
     shopt -u dotglob # Disable matching dotfiles
 
-    # Check if the current directory is empty
-    if [ -z "$(ls -A "$current_dir")" ]; then
-        read -p "The current directory is empty. Delete it and move to the parent directory? (y/N) " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            rm -rf "$current_dir"
-            cd "$parent_dir" || return
-            echo "Current directory deleted and moved to the parent directory."
-        else
-            echo "Current directory not deleted."
-        fi
-    fi
+    # Change to the parent directory
+    cd "$parent_dir" || return
+
+    echo "All files and directories copied and deleted from the current directory."
 }
 # ==========================================================
 # Init & $PATH
