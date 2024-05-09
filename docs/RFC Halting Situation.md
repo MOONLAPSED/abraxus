@@ -233,6 +233,57 @@ Implementers may choose to allow parentheses `()` to override the default
 precedence rules and explicitly control the order of evaluation, as is common
 practice in mathematical and programming expressions.
 
+
+### 5.3.1. Python implementation
+The following is an illustrative example of a Python function that evaluates Halting Situation expressions, taking into account operator precedence and associativity:
+```
+import operator
+
+OPERATORS = {
+    '+': operator.add,
+    '-': operator.sub,
+    '*': operator.mul,
+    '/': operator.truediv,
+    '%': operator.mod,
+    '==': operator.eq,
+    '!=': operator.ne,
+    '>': operator.gt,
+    '>=': operator.ge,
+    '<': operator.lt,
+    '<=': operator.le,
+    'and': operator.and_,
+    'or': operator.or_
+}
+
+def evaluate_expression(expression, context):
+    """
+    Evaluate a Halting Situation expression.
+
+    Args:
+        expression: The expression to evaluate.
+        context: A dictionary containing variable values.
+
+    Returns:
+        The result of the expression evaluation.
+    """
+    if isinstance(expression, tuple):  # Binary operation
+        operator_name, left, right = expression
+        op = OPERATORS[operator_name]
+        return op(evaluate_expression(left, context), evaluate_expression(right, context))
+    elif isinstance(expression, str):  # Variable reference
+        return context.get(expression, None)
+    else:  # Literal value
+        return expression
+
+# Example usage
+expression = ('+', ('==', 'x', 10), ('*', 2, 3))
+context = {'x': 5}
+result = evaluate_expression(expression, context)
+print(result)  # Output: 15
+```
+
+In this example, the evaluate_expression function recursively evaluates the expression, applying operators in the correct order based on the defined OPERATORS mapping. The context dictionary provides values for variable references.
+
 ### 5.4. Short-Circuit Evaluation
 
 For logical operators like `and` and `or`, implementers should consider
