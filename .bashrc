@@ -181,13 +181,13 @@ alias diff='git diff --color-words'
 alias dif='git diff --color --word-diff --stat'
 # ----------------------------------------------------
 # Git Functions
-git config --global rerere.enabled true
+git config --global rerere.enabled 'true'
 # reverse git add (takes off git add <file> from staging area)
 function unstage() {
   git reset HEAD -- $1
 }
 # Enable fsmonitor-watchman deamon for git IPC
-git config --global core.fsmonitor true
+git config --global core.fsmonitor 'true'
 # ==========================================================
 # Custom Functions
 # ==========================================================
