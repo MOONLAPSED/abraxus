@@ -363,12 +363,12 @@ bp() {
     fi
 
     # Copy all files and directories (including hidden ones)
+    shopt -s dotglob # Enable matching dotfiles
     cp -rv --no-preserve=mode ./* "$parent_dir" || return
+    shopt -u dotglob # Disable matching dotfiles
 
     # Check if the current directory is empty
-    if [ "$(ls -A)" ]; then
-        echo "Some files or directories could not be moved."
-    else
+    if [ -z "$(ls -A "$current_dir")" ]; then
         read -p "The current directory is empty. Delete it and move to the parent directory? (y/N) " -n 1 -r
         echo
         if [[ $REPLY =~ ^[Yy]$ ]]; then
