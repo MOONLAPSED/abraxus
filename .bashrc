@@ -395,13 +395,6 @@ fi
 unset __conda_setup
 # <<< conda initialize <<<
 # ----------------------------------------------------
-# NVM init
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
-[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
-export PATH="/c/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1/bin:$PATH"
-export PATH="/mnt/c/Program Files/NVIDIA GPU Computing Toolkit/CUDA/v12.1:$PATH"
-# ----------------------------------------------------
 #  GO init
 
 # export PATH=$PATH:$HOME/.go/go/bin
