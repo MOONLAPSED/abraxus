@@ -63,9 +63,14 @@ wsl:
  - `conda install pip`
  - `pip3 install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu121`
  - `conda install cudatoolkit`
-
-
-
+#### git
+ - `ssh-keygen -t rsa -b 4096 -C <your_git_email>`
+ - `eval "$(ssh-agent -s)"`
+ - `ssh-add ~/.ssh/id_rsa`
+ - """copy to clipboard, paste in github as new key""" `xclip -sel clip < ~/.ssh/id_rsa.pub`
+ - `ssh -T git@github.com`
+ - `echo ".ssh/" >> .gitignore`
+ - `git remote set-url origin git@github.com:<username>/<repository>.git`
 
 
 #### Windows11 OCR
