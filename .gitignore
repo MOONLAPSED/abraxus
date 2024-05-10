@@ -15,3 +15,4 @@
 .wget-hsts
 chrome/
 miniconda/
+.ssh/
