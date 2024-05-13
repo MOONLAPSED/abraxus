@@ -71,6 +71,9 @@ wsl:
  - `ssh -T git@github.com`
  - `echo ".ssh/" >> .gitignore`
  - `git remote set-url origin git@github.com:<username>/<repository>.git`
+#### pipx+pdm=>pyproject.toml
+ - `pip install pdm`
+ - `pip install pipx`
 
 
 #### Windows11 OCR
