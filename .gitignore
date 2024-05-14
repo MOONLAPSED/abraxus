@@ -16,3 +16,4 @@
 chrome/
 miniconda/
 .ssh/
+/app/*

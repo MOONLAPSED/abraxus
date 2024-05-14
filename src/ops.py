@@ -1,19 +1,48 @@
-# conc.py concrete script
-import os
-from typing import Any, Dict, Tuple
-from pathlib import Path
-import operator
-from functools import reduce
-from abc import ABC, abstractmethod
-from dataclasses import dataclass
-from logging.config import dictConfig
-from typing import Callable, TypeVar, List, Optional, Union, Any, Tuple, Dict, NamedTuple, Set
-import uuid
-import json
+# src/ops.py
 
+import operator
+from typing import Any, Callable, TypeVar
+from functools import reduce
+from .atom import Atom
 
 T = TypeVar('T')
 
+class DefaultOperations(Atom):
+    """
+    A default implementation of basic operations using Python's built-in operators.
+    """
+  
+    def equality(self, x: Any, y: Any) -> bool:
+        return operator.eq(x, y)
+
+    def less_than_or_equal_to(self, x: Any, y: Any) -> bool:
+        return operator.le(x, y)
+
+    def greater_than(self, x: Any, y: Any) -> bool:
+        return operator.gt(x, y)
+
+    def negation(self, a: Any) -> Any:
+        return operator.not_(a)
+
+    def excluded_middle(self, a: Any, b: Any) -> Any:
+        return self.negation(self.and_(a, b)) or (self.negation(a) and self.negation(b))
+
+    def and_(self, a: Any, b: Any) -> Any:
+        return operator.and_(a, b)
+
+    def or_(self, a: Any, b: Any) -> Any:
+        return operator.or_(a, b)
+
+    def implication(self, a: Any, b: Any) -> bool:
+        return not a or b
+    
+    def conjunction(self, *args: Any) -> Any:
+        return reduce(operator.and_, args)
+
+    def disjunction(self, *args: Any) -> Any:
+        return reduce(operator.or_, args)
+
+# Arithmetic Operations
 def addition(a: T, b: T) -> T:
     return operator.add(a, b)
 
@@ -33,7 +62,7 @@ def exponentiation(a: T, b: T) -> T:
 def commutativity(op: Callable[[T, T], T], a: T, b: T) -> bool:
     return op(a, b) == op(b, a)
 
-def associativity(op: Callable[[T, T, T], T], a: T, b: T, c: T) -> bool:
+def associativity(op: Callable[[T, T], T], a: T, b: T, c: T) -> bool:
     return op(op(a, b), c) == op(a, op(b, c))
 
 def distributivity(a: T, b: T, c: T) -> bool:
