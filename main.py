@@ -1,9 +1,52 @@
 # main.py
-
+import sys
 from src.atom import DataUnit
 from src.ops import DefaultOperations, addition, subtraction, multiplication, division, exponentiation
+from src.turing_tape import TuringTape
 
+def process_command(command: str, tape: TuringTape) -> str:
+    if command.startswith("read"):
+        return str(tape.read())
+    elif command.startswith("write "):
+        data = command.split(" ", 1)[1]
+        tape.write(data)
+        return f"Written: {data}"
+    elif command == "move_right":
+        tape.move_right()
+        return "Moved right"
+    elif command == "move_left":
+        tape.move_left()
+        return "Moved left"
+    elif command == "show_tape":
+        return str(tape)
+    else:
+        return "Command not recognized."
+def kernel_agent(prompt: str, tape: TuringTape) -> str:
+    # Split prompt into separate commands
+    commands = prompt.split(";")
+    responses = []
+
+    for command in commands:
+        response = process_command(command.strip(), tape)
+        responses.append(response)
+    
+    # Generate final response
+    final_response = "\n".join(responses)
+    return final_response
+
+# Read prompt from command-line arguments and process it
 if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: python main.py <command_string>")
+        sys.exit(1)
+    
+    prompt_input = " ".join(sys.argv[1:])
+    tape = TuringTape()  # Initialize TuringTape
+    result = kernel_agent(prompt_input, tape)
+    
+    # Output the result to STDOUT
+    print(result)
+
     string_data = DataUnit("Hello, World!")
     binary_data = DataUnit(b'\x12\x34\x56\x78')
     embedding_data = DataUnit([0.1, 0.2, 0.3])

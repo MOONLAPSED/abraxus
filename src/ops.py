@@ -1,109 +1,87 @@
-# src/ops.py
-
+from dataclasses import dataclass
+from typing import Any, Callable, TypeVar, Generic
 import operator
-from typing import Any, Callable, TypeVar
 from functools import reduce
-from .atom import Atom
+from .atom import Atom, DataUnit
 
 T = TypeVar('T')
 
-class DefaultOperations(Atom):
-    """
-    A default implementation of basic operations using Python's built-in operators.
-    """
-  
-    def equality(self, x: Any, y: Any) -> bool:
-        return operator.eq(x, y)
+@dataclass(frozen=True)
+class AtomDataclass(Generic[T], Atom):
+    value: T
 
-    def less_than_or_equal_to(self, x: Any, y: Any) -> bool:
-        return operator.le(x, y)
+    def __repr__(self):
+        return f"AtomDataclass(value={self.value})"
 
-    def greater_than(self, x: Any, y: Any) -> bool:
-        return operator.gt(x, y)
+    def to_dataclass(self):
+        return self
 
-    def negation(self, a: Any) -> Any:
-        return operator.not_(a)
+    def __add__(self, other: 'AtomDataclass[T]') -> 'AtomDataclass[T]':
+        return AtomDataclass(operator.add(self.value, other.value))
 
-    def excluded_middle(self, a: Any, b: Any) -> Any:
-        return self.negation(self.and_(a, b)) or (self.negation(a) and self.negation(b))
+    def __sub__(self, other: 'AtomDataclass[T]') -> 'AtomDataclass[T]':
+        return AtomDataclass(operator.sub(self.value, other.value))
 
-    def and_(self, a: Any, b: Any) -> Any:
-        return operator.and_(a, b)
+    def __mul__(self, other: 'AtomDataclass[T]') -> 'AtomDataclass[T]':
+        return AtomDataclass(operator.mul(self.value, other.value))
 
-    def or_(self, a: Any, b: Any) -> Any:
-        return operator.or_(a, b)
+    def __truediv__(self, other: 'AtomDataclass[T]') -> 'AtomDataclass[T]':
+        return AtomDataclass(operator.truediv(self.value, other.value))
 
-    def implication(self, a: Any, b: Any) -> bool:
-        return not a or b
-    
-    def conjunction(self, *args: Any) -> Any:
-        return reduce(operator.and_, args)
+    def __pow__(self, other: 'AtomDataclass[T]') -> 'AtomDataclass[T]':
+        return AtomDataclass(operator.pow(self.value, other.value))
 
-    def disjunction(self, *args: Any) -> Any:
-        return reduce(operator.or_, args)
+    def __eq__(self, other: 'AtomDataclass[T]') -> bool:
+        return operator.eq(self.value, other.value)
 
-# Arithmetic Operations
-def addition(a: T, b: T) -> T:
-    return operator.add(a, b)
+    def __ne__(self, other: 'AtomDataclass[T]') -> bool:
+        return operator.ne(self.value, other.value)
 
-def subtraction(a: T, b: T) -> T:
-    return operator.sub(a, b)
+    def __lt__(self, other: 'AtomDataclass[T]') -> bool:
+        return operator.lt(self.value, other.value)
 
-def multiplication(a: T, b: T) -> T:
-    return operator.mul(a, b)
+    def __gt__(self, other: 'AtomDataclass[T]') -> bool:
+        return operator.gt(self.value, other.value)
 
-def division(a: T, b: T) -> T:
-    return operator.truediv(a, b)
+    def __le__(self, other: 'AtomDataclass[T]') -> bool:
+        return operator.le(self.value, other.value)
 
-def exponentiation(a: T, b: T) -> T:
-    return operator.pow(a, b)
+    def __ge__(self, other: 'AtomDataclass[T]') -> bool:
+        return operator.ge(self.value, other.value)
+
+    def __and__(self, other: 'AtomDataclass[T]') -> 'AtomDataclass[T]':
+        return AtomDataclass(operator.and_(self.value, other.value))
+
+    def __or__(self, other: 'AtomDataclass[T]') -> 'AtomDataclass[T]':
+        return AtomDataclass(operator.or_(self.value, other.value))
+
+    def __invert__(self) -> 'AtomDataclass[T]':
+        return AtomDataclass(operator.not_(self.value))
 
 # Arithmetic Properties
-def commutativity(op: Callable[[T, T], T], a: T, b: T) -> bool:
-    return op(a, b) == op(b, a)
+def commutativity(op: Callable[[T, T], T], a: AtomDataclass[T], b: AtomDataclass[T]) -> bool:
+    return op(a.value, b.value) == op(b.value, a.value)
 
-def associativity(op: Callable[[T, T], T], a: T, b: T, c: T) -> bool:
-    return op(op(a, b), c) == op(a, op(b, c))
+def associativity(op: Callable[[T, T], T], a: AtomDataclass[T], b: AtomDataclass[T], c: AtomDataclass[T]) -> bool:
+    return op(op(a.value, b.value), c.value) == op(a.value, op(b.value, c.value))
 
-def distributivity(a: T, b: T, c: T) -> bool:
-    return multiplication(a, addition(b, c)) == addition(multiplication(a, b), multiplication(a, c))
-
-# Ordering and Inequalities
-def equality(a: T, b: T) -> bool:
-    return operator.eq(a, b)
-
-def inequality(a: T, b: T) -> bool:
-    return operator.ne(a, b)
-
-def less_than(a: T, b: T) -> bool:
-    return operator.lt(a, b)
-
-def greater_than(a: T, b: T) -> bool:
-    return operator.gt(a, b)
-
-def less_than_or_equal_to(a: T, b: T) -> bool:
-    return operator.le(a, b)
-
-def greater_than_or_equal_to(a: T, b: T) -> bool:
-    return operator.ge(a, b)
-
-def trichotomy(a: T, b: T) -> bool:
-    return less_than(a, b) or equality(a, b) or greater_than(a, b)
+def distributivity(a: AtomDataclass[T], b: AtomDataclass[T], c: AtomDataclass[T]) -> bool:
+    return (a * (b + c)).value == (a * b).value + (a * c).value
 
 # Logical Foundations
-def and_operator(a: bool, b: bool) -> bool:
-    return operator.and_(a, b)
+def and_operator(a: AtomDataclass[bool], b: AtomDataclass[bool]) -> AtomDataclass[bool]:
+    return a & b
 
-def or_operator(a: bool, b: bool) -> bool:
-    return operator.or_(a, b)
+def or_operator(a: AtomDataclass[bool], b: AtomDataclass[bool]) -> AtomDataclass[bool]:
+    return a | b
 
-def not_operator(a: bool) -> bool:
-    return operator.not_(a)
+def not_operator(a: AtomDataclass[bool]) -> AtomDataclass[bool]:
+    return ~a
 
-def implication(a: bool, b: bool) -> bool:
-    return not_operator(a) or b
+def implication(a: AtomDataclass[bool], b: AtomDataclass[bool]) -> AtomDataclass[bool]:
+    return ~a | b
 
-def biconditional(a: bool, b: bool) -> bool:
+def biconditional(a: AtomDataclass[bool], b: AtomDataclass[bool]) -> AtomDataclass[bool]:
     return and_operator(implication(a, b), implication(b, a))
 
 # Sets and Set Operations
@@ -115,10 +93,10 @@ set_operations = {
 }
 
 # Functions and Relations
-def function_application(f: Callable[[T], T], x: T) -> T:
-    return f(x)
+def function_application(f: Callable[[T], T], x: AtomDataclass[T]) -> AtomDataclass[T]:
+    return AtomDataclass(f(x.value))
 
-def composition(f: Callable[[T], T], g: Callable[[T], T]) -> Callable[[T], T]:
-    def composed(x: T) -> T:
-        return f(g(x))
+def composition(f: Callable[[T], T], g: Callable[[T], T]) -> Callable[[AtomDataclass[T]], AtomDataclass[T]]:
+    def composed(x: AtomDataclass[T]) -> AtomDataclass[T]:
+        return AtomDataclass(f(g(x.value)))
     return composed

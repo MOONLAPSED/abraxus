@@ -1,16 +1,28 @@
 # src/atom.py
 
 from abc import ABC, abstractmethod
-from typing import Union, List
+from typing import Union, List, Generic, TypeVar
 import base64
 import struct
+from dataclasses import dataclass
+
+
+T = TypeVar('T')
+
 
 class Atom(ABC):
     """Base class for atomic units."""
+
     @abstractmethod
     def __repr__(self):
         """Return a canonical representation of the atomic unit."""
         pass
+
+    @abstractmethod
+    def to_dataclass(self):
+        """Convert the instance to a dataclass."""
+        pass
+
 
 class DataUnit(Atom):
     """A generic data unit capable of representing various data forms."""
