@@ -3,8 +3,7 @@ abraxus/
 │
 ├── src/
 │   ├── __init__.py
-│   ├── atom.py
-│   ├── ops.py
+│   ├── app.py
 │
 └── main.py
 """
