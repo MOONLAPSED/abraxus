@@ -1,3 +1,4 @@
+# Necessary Imports
 from abc import ABC, abstractmethod
 import base64
 import struct
@@ -8,25 +9,17 @@ from typing import Union, List, Generic, TypeVar, Callable, Any
 
 T = TypeVar('T')
 
+# DataUnit Class Definition with Encoding
 @dataclass
 class DataUnit(Generic[T]):
     data: T
     data_type: str = field(init=False)
 
     def __post_init__(self):
-        self.data_type = self._determine_data_type()
+        self.data_type = self._determine_data_type(self.data)
 
     @staticmethod
     def _determine_data_type(data: Any) -> str:
-        """
-        Determine the data type of the given data.
-
-        Args:
-            data (Any): The data to determine the type for.
-
-        Returns:
-            str: The data type as a string.
-        """
         data_type = type(data).__name__
         if data_type == 'str':
             return 'string'
@@ -43,27 +36,21 @@ class DataUnit(Generic[T]):
         else:
             return 'unknown'
 
-    def _encode_data(self) -> bytes:
-        """
-        Encode the data based on its data type.
-
-        Returns:
-            bytes: The encoded data.
-        """
-        if self.data_type == 'string':
-            return self.data.encode('utf-8')
-        elif self.data_type == 'integer':
-            return struct.pack('!q', self.data)
-        elif self.data_type == 'float':
-            return struct.pack('!d', self.data)
-        elif self.data_type == 'boolean':
-            return struct.pack('?', self.data)
-        elif self.data_type == 'list':
-            encoded_elements = [self._encode_data(element) for element in self.data]
+    def _encode_data(self, data: Any) -> bytes:
+        if isinstance(data, str):
+            return data.encode('utf-8')
+        elif isinstance(data, int):
+            return struct.pack('!q', data)
+        elif isinstance(data, float):
+            return struct.pack('!d', data)
+        elif isinstance(data, bool):
+            return struct.pack('?', data)
+        elif isinstance(data, list):
+            encoded_elements = [self._encode_data(element) for element in data]
             return b''.join(encoded_elements)
-        elif self.data_type == 'dictionary':
+        elif isinstance(data, dict):
             encoded_items = []
-            for key, value in self.data.items():
+            for key, value in data.items():
                 encoded_key = self._encode_data(key)
                 encoded_value = self._encode_data(value)
                 encoded_items.append(encoded_key)
@@ -73,77 +60,37 @@ class DataUnit(Generic[T]):
             raise ValueError(f"Unsupported data type: {self.data_type}")
 
     def encode(self) -> bytes:
-        """
-        Encode the data unit.
-
-        Returns:
-            bytes: The encoded data unit.
-        """
         data_type_bytes = self.data_type.encode('utf-8')
-        data_bytes = self._encode_data()
+        data_bytes = self._encode_data(self.data)
         data_length = len(data_bytes)
         header = struct.pack('!I', data_length)
         return header + data_type_bytes + data_bytes
 
+# Atom Abstract Base Class Definition
 class Atom(ABC):
-    """
-    An abstract base class representing an Atom.
-    """
 
     @abstractmethod
     def encode(self) -> bytes:
-        """
-        Encode the Atom into bytes.
-
-        Returns:
-            bytes: The encoded Atom.
-        """
         pass
 
     @abstractmethod
     def decode(self, data: bytes) -> None:
-        """
-        Decode the Atom from bytes.
-
-        Args:
-            data (bytes): The encoded Atom data.
-        """
         pass
 
     @abstractmethod
     def execute(self, *args, **kwargs) -> Any:
-        """
-        Execute the Atom with the given arguments.
-
-        Args:
-            *args: Positional arguments for the Atom.
-            **kwargs: Keyword arguments for the Atom.
-
-        Returns:
-            Any: The result of executing the Atom.
-        """
         pass
-
-# Data Management Classes
-T = TypeVar('T')
-
-
-class Atom(ABC):
-    """Base class for atomic units."""
 
     @abstractmethod
     def __repr__(self):
-        """Return a canonical representation of the atomic unit."""
         pass
 
     @abstractmethod
     def to_dataclass(self):
-        """Convert the instance to a dataclass."""
         pass
 
-
-class DataUnit(Atom):
-    """A generic data unit capable of representing various data forms."""
+# Redesigned DataUnit Class based on Atom
+class AtomDataUnit(Atom):
 
     def __init__(self, data: Union[str, bytes, List[float], List[int]]):
         self.data_type = self._determine_data_type(data)
@@ -218,7 +165,7 @@ class DataUnit(Atom):
     def to_dataclass(self):
         return DataUnitDataclass(self.data_type, self.data)
 
-
+# DataUnitDataclass to represent DataUnit in Dataclass Format
 @dataclass(frozen=True)
 class DataUnitDataclass(Atom):
     data_type: str
@@ -230,7 +177,8 @@ class DataUnitDataclass(Atom):
 
     def __repr__(self):
         if self.data_type == 'string':
-            return f"DataUnitDataclass(string: {self.data.decode()})"
+            data_str = self.data.decode() if isinstance(self.data, bytes) else self.data
+            return f"DataUnitDataclass(string: {data_str})"
         elif self.data_type == 'bytes':
             return f"DataUnitDataclass(bytes: {self.data.hex()})"
         elif self.data_type == 'embedding':
@@ -242,7 +190,7 @@ class DataUnitDataclass(Atom):
     def to_dataclass(self):
         return self
 
-
+# AtomDataclass to represent Generic Atomic Dataclass
 @dataclass(frozen=True)
 class AtomDataclass(Generic[T], Atom):
     value: T
@@ -295,12 +243,9 @@ class AtomDataclass(Generic[T], Atom):
     def __invert__(self) -> 'AtomDataclass[T]':
         return AtomDataclass(operator.not_(self.value))
 
-
-# Formal Theory and Operations Classes
-
+# FormalTheory Class
 @dataclass
 class FormalTheory(Generic[T]):
-    """Represents a formal theory with basic properties and operations."""
     reflexivity: Callable[[T], bool] = operator.eq
     symmetry: Callable[[T, T], bool] = operator.eq
     transitivity: Callable[[T, T, T], bool] = lambda x, y, z: (x == y) and (y == z) and (x == z)
@@ -324,83 +269,66 @@ class FormalTheory(Generic[T]):
     def if_else(a: bool, x: T, y: T) -> T:
         return x if a else y
 
-
+# Operations Abstract Base Class
 class Operations(ABC, Generic[T]):
-    """An abstract base class for defining operations."""
 
     @abstractmethod
     def equality(self, x: T, y: T) -> bool:
-        """Check if two elements are equal."""
         pass
 
     @abstractmethod
     def less_than_or_equal_to(self, x: T, y: T) -> bool:
-        """Check if one element is less than or equal to another."""
         pass
 
     @abstractmethod
     def greater_than(self, x: T, y: T) -> bool:
-        """Check if one element is greater than another."""
         pass
 
     @abstractmethod
     def negation(self, a: T) -> T:
-        """Negate an element."""
         pass
 
     @abstractmethod
     def excluded_middle(self, a: T, b: T) -> T:
-        """Apply the law of excluded middle."""
         pass
 
     @abstractmethod
     def and_(self, a: T, b: T) -> T:
-        """Perform logical AND operation."""
         pass
 
     @abstractmethod
     def or_(self, a: T, b: T) -> T:
-        """Perform logical OR operation."""
         pass
 
     @abstractmethod
     def implication(self, a: T, b: T) -> bool:
-        """Check if one element implies another."""
         pass
 
     @abstractmethod
     def conjunction(self, *args: T) -> T:
-        """Perform conjunction over a sequence of elements."""
         pass
 
     @abstractmethod
     def disjunction(self, *args: T) -> T:
-        """Perform disjunction over a sequence of elements."""
         pass
 
     def inequality(self, x: T, y: T) -> bool:
-        """Check if two elements are not equal."""
         return not self.equality(x, y)
 
     def less_than(self, x: T, y: T) -> bool:
-        """Check if one element is less than another."""
         return self.greater_than(y, x)
 
     def greater_than_or_equal_to(self, x: T, y: T) -> bool:
-        """Check if one element is greater than or equal to another."""
         return self.less_than_or_equal_to(y, x)
 
     def double_negation(self, a: T) -> T:
-        """Apply double negation to an element."""
         return self.negation(self.negation(a))
 
     def biconditional(self, a: T, b: T) -> bool:
-        """Check if two elements are biconditionally related."""
         return self.implication(a, b) and self.implication(b, a)
 
-
+# Default Operations Implementation
 class DefaultOperations(Operations[Any]):
-    """A default implementation of the Operations class using Python's built-in operators."""
 
     def equality(self, x: Any, y: Any) -> bool:
         return operator.eq(x, y)
@@ -431,7 +359,6 @@ class DefaultOperations(Operations[Any]):
 
     def disjunction(self, *args: Any) -> Any:
         return reduce(operator.or_, args)
-
 
 # Example usage
 if __name__ == "__main__":
