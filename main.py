@@ -6,6 +6,124 @@ import operator
 from functools import reduce, partial
 from typing import Union, List, Generic, TypeVar, Callable, Any
 
+T = TypeVar('T')
+
+@dataclass
+class DataUnit(Generic[T]):
+    data: T
+    data_type: str = field(init=False)
+
+    def __post_init__(self):
+        self.data_type = self._determine_data_type()
+
+    @staticmethod
+    def _determine_data_type(data: Any) -> str:
+        """
+        Determine the data type of the given data.
+
+        Args:
+            data (Any): The data to determine the type for.
+
+        Returns:
+            str: The data type as a string.
+        """
+        data_type = type(data).__name__
+        if data_type == 'str':
+            return 'string'
+        elif data_type == 'int':
+            return 'integer'
+        elif data_type == 'float':
+            return 'float'
+        elif data_type == 'bool':
+            return 'boolean'
+        elif data_type == 'list':
+            return 'list'
+        elif data_type == 'dict':
+            return 'dictionary'
+        else:
+            return 'unknown'
+
+    def _encode_data(self) -> bytes:
+        """
+        Encode the data based on its data type.
+
+        Returns:
+            bytes: The encoded data.
+        """
+        if self.data_type == 'string':
+            return self.data.encode('utf-8')
+        elif self.data_type == 'integer':
+            return struct.pack('!q', self.data)
+        elif self.data_type == 'float':
+            return struct.pack('!d', self.data)
+        elif self.data_type == 'boolean':
+            return struct.pack('?', self.data)
+        elif self.data_type == 'list':
+            encoded_elements = [self._encode_data(element) for element in self.data]
+            return b''.join(encoded_elements)
+        elif self.data_type == 'dictionary':
+            encoded_items = []
+            for key, value in self.data.items():
+                encoded_key = self._encode_data(key)
+                encoded_value = self._encode_data(value)
+                encoded_items.append(encoded_key)
+                encoded_items.append(encoded_value)
+            return b''.join(encoded_items)
+        else:
+            raise ValueError(f"Unsupported data type: {self.data_type}")
+
+    def encode(self) -> bytes:
+        """
+        Encode the data unit.
+
+        Returns:
+            bytes: The encoded data unit.
+        """
+        data_type_bytes = self.data_type.encode('utf-8')
+        data_bytes = self._encode_data()
+        data_length = len(data_bytes)
+        header = struct.pack('!I', data_length)
+        return header + data_type_bytes + data_bytes
+
+class Atom(ABC):
+    """
+    An abstract base class representing an Atom.
+    """
+
+    @abstractmethod
+    def encode(self) -> bytes:
+        """
+        Encode the Atom into bytes.
+
+        Returns:
+            bytes: The encoded Atom.
+        """
+        pass
+
+    @abstractmethod
+    def decode(self, data: bytes) -> None:
+        """
+        Decode the Atom from bytes.
+
+        Args:
+            data (bytes): The encoded Atom data.
+        """
+        pass
+
+    @abstractmethod
+    def execute(self, *args, **kwargs) -> Any:
+        """
+        Execute the Atom with the given arguments.
+
+        Args:
+            *args: Positional arguments for the Atom.
+            **kwargs: Keyword arguments for the Atom.
+
+        Returns:
+            Any: The result of executing the Atom.
+        """
+        pass
+
 # Data Management Classes
 T = TypeVar('T')
 

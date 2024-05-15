@@ -1,1 +1,0 @@
-write Hello; move_right; write World; move_left; read; move_right; read; show_tape;
