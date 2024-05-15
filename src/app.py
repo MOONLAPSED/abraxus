@@ -27,6 +27,7 @@ class Atom(ABC):
     def to_dataclass(self):
         pass
 
+
 @dataclass(frozen=True)
 class AtomDataclass(Generic[T], Atom):
     value: T
@@ -37,7 +38,10 @@ class AtomDataclass(Generic[T], Atom):
         object.__setattr__(self, 'data_type', data_type_name.lower())
 
     def __repr__(self):
-        return f"AtomDataclass(value={self.value}, data_type={self.data_type})"
+        return f"AtomDataclass(id={id(self)}, value={self.value}, data_type='{self.data_type}')"
+
+    def to_dataclass(self):
+        return self
 
     def to_dataclass(self):
         return self
@@ -97,9 +101,49 @@ class AtomDataclass(Generic[T], Atom):
             raise ValueError(f"Unsupported data type: {self.data_type}")
     
     def decode(self, data: bytes) -> None:
-        pass
+        header_length = struct.unpack('!I', data[:4])[0]
+        data_type_bytes = data[4:4 + header_length]
+        data_type = data_type_bytes.decode('utf-8')
+        data_bytes = data[4 + header_length:]
+
+        if data_type == 'string':
+            value = data_bytes.decode('utf-8')
+        elif data_type == 'integer':
+            value = struct.unpack('!q', data_bytes)[0]
+        elif data_type == 'float':
+            value = struct.unpack('!d', data_bytes)[0]
+        elif data_type == 'boolean':
+            value = struct.unpack('?', data_bytes)[0]
+        elif data_type == 'list':
+            value = []
+            offset = 0
+            while offset < len(data_bytes):
+                element = AtomDataclass(None)
+                element_size = element.decode(data_bytes[offset:])
+                value.append(element.value)
+                offset += element_size
+        elif data_type == 'dictionary':
+            value = {}
+            offset = 0
+            while offset < len(data_bytes):
+                key = AtomDataclass(None)
+                key_size = key.decode(data_bytes[offset:])
+                offset += key_size
+                value = AtomDataclass(None)
+                value_size = value.decode(data_bytes[offset:])
+                offset += value_size
+                value[key.value] = value.value
+        else:
+            raise ValueError(f"Unsupported data type: {data_type}")
+
+        self.value = value
+        object.__setattr__(self, 'data_type', data_type)
 
     def execute(self, *args, **kwargs) -> Any:
+        # Advanced runtime feature, along with references to 'function atoms' or atoms with complex/emergent relationships or behavior.
+        # Take place in a simulated REPL environment.
+        # Client displays a totally simulated CLI environment, seperate and 'safe' from the server (REPL) which is being both simulated and executed.
+        # In other words, 'execute' is a REPL environment, but the server is not aware of it and bad commands will not be executed by the 'actual' (server) REPL.
         pass
 
 
@@ -132,10 +176,14 @@ class FormalTheory(Generic[T]):
         return all(comparison)
 
     def __repr__(self):
+        case_base_repr = {
+            key: (value.__name__ if callable(value) else value)
+            for key, value in self.case_base.items()
+        }
         return (f"FormalTheory(\n"
-                f"  reflexivity={self.reflexivity},\n"
-                f"  symmetry={self.symmetry},\n"
-                f"  transitivity={self.transitivity},\n"
-                f"  transparency={self.transparency},\n"
-                f"  case_base={self.case_base}\n"
+                f"  reflexivity={self.reflexivity.__name__},\n"
+                f"  symmetry={self.symmetry.__name__},\n"
+                f"  transitivity={self.transitivity.__name__},\n"
+                f"  transparency={self.transparency.__name__},\n"
+                f"  case_base={case_base_repr}\n"
                 f")")
