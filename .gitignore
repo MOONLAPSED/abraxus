@@ -16,4 +16,5 @@
 chrome/
 miniconda/
 .ssh/
-/app/*
+/.old/*
+__pycache__/
