@@ -1,8 +1,7 @@
+import struct
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Generic, TypeVar
-import struct
-import functools
+from typing import Any, Callable, Dict, Generic, List, Optional, Type, TypeVar, Union
 
 T = TypeVar('T')
 
@@ -27,7 +26,6 @@ class Atom(ABC):
     def to_dataclass(self):
         pass
 
-
 @dataclass(frozen=True)
 class AtomDataclass(Generic[T], Atom):
     value: T
@@ -39,9 +37,6 @@ class AtomDataclass(Generic[T], Atom):
 
     def __repr__(self):
         return f"AtomDataclass(id={id(self)}, value={self.value}, data_type='{self.data_type}')"
-
-    def to_dataclass(self):
-        return self
 
     def to_dataclass(self):
         return self
@@ -58,23 +53,30 @@ class AtomDataclass(Generic[T], Atom):
     def __truediv__(self, other):
         return AtomDataclass(self.value / other.value)
 
-    @staticmethod
-    def _determine_data_type(data: Any) -> str:
-        data_type = type(data).__name__
-        if data_type == 'str':
-            return 'string'
-        elif data_type == 'int':
-            return 'integer'
-        elif data_type == 'float':
-            return 'float'
-        elif data_type == 'bool':
-            return 'boolean'
-        elif data_type == 'list':
-            return 'list'
-        elif data_type == 'dict':
-            return 'dictionary'
-        else:
-            return 'unknown'
+    def __eq__(self, other):
+        if isinstance(other, AtomDataclass):
+            return self.value == other.value
+        return False
+
+    def __lt__(self, other):
+        if isinstance(other, AtomDataclass):
+            return self.value < other.value
+        return False
+
+    def __le__(self, other):
+        if isinstance(other, AtomDataclass):
+            return self.value <= other.value
+        return False
+
+    def __gt__(self, other):
+        if isinstance(other, AtomDataclass):
+            return self.value > other.value
+        return False
+
+    def __ge__(self, other):
+        if isinstance(other, AtomDataclass):
+            return self.value >= other.value
+        return False
 
     def encode(self) -> bytes:
         data_type_bytes = self.data_type.encode('utf-8')
@@ -129,10 +131,10 @@ class AtomDataclass(Generic[T], Atom):
                 key = AtomDataclass(None)
                 key_size = key.decode(data_bytes[offset:])
                 offset += key_size
-                value = AtomDataclass(None)
-                value_size = value.decode(data_bytes[offset:])
+                val = AtomDataclass(None)
+                value_size = val.decode(data_bytes[offset:])
                 offset += value_size
-                value[key.value] = value.value
+                value[key.value] = val.value
         else:
             raise ValueError(f"Unsupported data type: {data_type}")
 
@@ -140,15 +142,10 @@ class AtomDataclass(Generic[T], Atom):
         object.__setattr__(self, 'data_type', data_type)
 
     def execute(self, *args, **kwargs) -> Any:
-        # Advanced runtime feature, along with references to 'function atoms' or atoms with complex/emergent relationships or behavior.
-        # Take place in a simulated REPL environment.
-        # Client displays a totally simulated CLI environment, seperate and 'safe' from the server (REPL) which is being both simulated and executed.
-        # In other words, 'execute' is a REPL environment, but the server is not aware of it and bad commands will not be executed by the 'actual' (server) REPL.
         pass
 
-
 @dataclass
-class FormalTheory(Generic[T]):
+class FormalTheory(Atom, Generic[T]):
     reflexivity: Callable[[T], bool] = lambda x: x == x
     symmetry: Callable[[T, T], bool] = lambda x, y: x == y
     transitivity: Callable[[T, T, T], bool] = lambda x, y, z: (x == y) and (y == z) and (x == z)
@@ -161,19 +158,33 @@ class FormalTheory(Generic[T]):
             '⊥': lambda _, y: y,
             'a': self.if_else_a
         }
-    
-    @staticmethod
-    def if_else(a: bool, x: T, y: T) -> T:
+
+    def if_else(self, a: bool, x: T, y: T) -> T:
         return x if a else y
 
     def if_else_a(self, x: T, y: T) -> T:
         return self.if_else(True, x, y)
 
-    def compare(self, atoms: list) -> bool:
-        comparison = []
-        for i in range(1, len(atoms)):
-            comparison.append(self.symmetry(atoms[0].value, atoms[i].value))
+    def compare(self, atoms: List[AtomDataclass[T]]) -> bool:
+        if not atoms:
+            return False
+        comparison = [self.symmetry(atoms[0].value, atoms[i].value) for i in range(1, len(atoms))]
         return all(comparison)
+
+    def encode(self) -> bytes:
+        # Example encoding for formal theory properties
+        return str(self.case_base).encode()
+
+    def decode(self, data: bytes) -> None:
+        # Example decoding for formal theory properties
+        pass
+
+    def execute(self, *args, **kwargs) -> Any:
+        # Placeholder
+        pass
+
+    def to_dataclass(self):
+        return super().to_dataclass()
 
     def __repr__(self):
         case_base_repr = {
@@ -187,3 +198,42 @@ class FormalTheory(Generic[T]):
                 f"  transparency={self.transparency.__name__},\n"
                 f"  case_base={case_base_repr}\n"
                 f")")
+
+def reflexivity(x: Any) -> bool:
+    return x == x
+
+def symmetry(x: Any, y: Any) -> bool:
+    return x == y
+
+# REPL environment example
+def repl():
+    formal_theory = FormalTheory[int]()
+    atom1 = AtomDataclass(5)
+    atom2 = AtomDataclass(5)
+    atom3 = AtomDataclass(5)
+
+    while True:
+        user_input = input(">>> ").strip()
+        if user_input.lower() in ['exit', 'quit']:
+            break
+        elif user_input == "compare":
+            print(formal_theory.compare([atom1, atom2]))
+        elif user_input == "show":
+            print(formal_theory)
+        elif user_input == "theory":
+            print(formal_theory.to_dataclass())
+        elif user_input == "repr":
+            print(f"Theory:\n{formal_theory.__repr__()}\n")
+    
+            print("\nComparison result", formal_theory.compare([atom1, atom2, atom3]), "\n")
+            print("\nReflexivity result", formal_theory.reflexivity(atom1.value), "\n")
+            print("\nSymmetry result", all(formal_theory.symmetry(atom1.value, atom.value) for atom in [atom1, atom2, atom3]), "\n")
+            print("\nTransitivity result", formal_theory.transitivity(atom1.value, atom3.value, atom1.value), "\n")
+            print("\nTransparency result", formal_theory.transparency(formal_theory.if_else, atom1.value, atom1.value), "\n")
+            print("\nCase base result", formal_theory.case_base['a'](atom1.value, atom2.value), "\n")
+
+        else:
+            print("Unknown command")
+
+if __name__ == "__main__":
+    repl()
