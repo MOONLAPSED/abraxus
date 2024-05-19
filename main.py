@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
+import numpy as np
+import matplotlib.pyplot as plt
+from typing import Callable, Dict, List, Generic, TypeVar, Any
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Generic, TypeVar, Any, List, Union
 import struct
 
 # Generics
