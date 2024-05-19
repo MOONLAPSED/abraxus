@@ -146,6 +146,13 @@ class AtomDataclass(Generic[T], Atom):
 
 @dataclass
 class FormalTheory(Atom, Generic[T]):
+    """
+    "This tension between theory and anti-theory can be seen as a driving force
+    for scientific progress and the continuous refinement of theoretical frameworks."
+
+    FormalTheory is a class that explores the interplay between abstract theoretical
+    constructs and their physical manifestations or simulations.
+    """
     reflexivity: Callable[[T], bool] = lambda x: x == x
     symmetry: Callable[[T, T], bool] = lambda x, y: x == y
     transitivity: Callable[[T, T, T], bool] = lambda x, y, z: (x == y) and (y == z) and (x == z)
@@ -186,18 +193,20 @@ class FormalTheory(Atom, Generic[T]):
     def to_dataclass(self):
         return super().to_dataclass()
 
-    def __repr__(self):
-        case_base_repr = {
-            key: (value.__name__ if callable(value) else value)
-            for key, value in self.case_base.items()
-        }
-        return (f"FormalTheory(\n"
-                f"  reflexivity={self.reflexivity.__name__},\n"
-                f"  symmetry={self.symmetry.__name__},\n"
-                f"  transitivity={self.transitivity.__name__},\n"
-                f"  transparency={self.transparency.__name__},\n"
-                f"  case_base={case_base_repr}\n"
-                f")")
+def __repr__(self):
+    case_base_repr = {
+        key: (value.__name__ if callable(value) else value)
+        for key, value in self.case_base.items()
+    }
+    return (f"""FormalTheory(\n
+"This tension between theory and anti-theory can be seen as a driving force
+for scientific progress and the continuous refinement of theoretical frameworks."\n
+  reflexivity={self.reflexivity.__name__},\n
+  symmetry={self.symmetry.__name__},\n
+  transitivity={self.transitivity.__name__},\n
+  transparency={self.transparency.__name__},\n
+  case_base={case_base_repr}\n
+)""")
 
 def reflexivity(x: Any) -> bool:
     return x == x
