@@ -41,7 +41,11 @@ class AtomDataclass(Generic[T], Atom):
             'float': 'float',
             'bool': 'boolean',
             'list': 'list',
-            'dict': 'dictionary'
+            'dict': 'dictionary',
+            'embed': 'embedding',
+            'bin': 'binary',
+            'blob': 'blob',
+            'unsupported': 'unsupported'
         }
         data_type_name = type(self.value).__name__
         object.__setattr__(self, 'data_type', type_map.get(data_type_name, 'unsupported'))
@@ -247,11 +251,11 @@ def repl():
     atom3 = atom1 + atom2
     print(f"atom1 + atom2 = {atom3}")
 
-    encoded = atom3.encode()
+    encoded = atom3._encode_data()
     print(f"Encoded atom3: {encoded}")
 
-    atom4 = AtomDataclass(0)
-    print(f"Decoded atom4: {atom4}")
+    atom4 = encoded.decode()
+    print(f"Decoded atom3: {atom4}")
 
     theory = FormalTheory[int]()
     print(theory)

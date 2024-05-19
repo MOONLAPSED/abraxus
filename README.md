@@ -6,3 +6,9 @@
 # See /docs/install.md for instructions.
 1) Install windows, update to service pack >= 23H2 - do not 'connect automatically' to wifi (checkbox)
 
+
+### branchify:
+```
+git checkout -b refactor-main
+git push origin refactor-main
+```
