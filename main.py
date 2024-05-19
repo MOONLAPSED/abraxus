@@ -1,14 +1,12 @@
 from abc import ABC, abstractmethod
-import numpy as np
-import matplotlib.pyplot as plt
-from typing import Callable, Dict, List, Generic, TypeVar, Any
 from dataclasses import dataclass, field
+from typing import Callable, Dict, Generic, TypeVar, Any, List
 import struct
 
-# Generics
+# Type Variables
 T = TypeVar('T')
 
-# Abstracts
+# Abstract Base Class
 class Atom(ABC):
     @abstractmethod
     def encode(self) -> bytes:
@@ -30,12 +28,12 @@ class Atom(ABC):
     def to_dataclass(self):
         pass
 
-# Dataclasses
+# Dataclass Implementation
 @dataclass(frozen=True)
 class AtomDataclass(Generic[T], Atom):
     value: T
     data_type: str = field(init=False)
-
+    
     def __post_init__(self):
         type_map = {
             'str': 'string',
@@ -48,55 +46,12 @@ class AtomDataclass(Generic[T], Atom):
         data_type_name = type(self.value).__name__
         object.__setattr__(self, 'data_type', type_map.get(data_type_name, 'unsupported'))
 
-    def __repr__(self):
-        return f"AtomDataclass(id={id(self)}, value={self.value}, data_type='{self.data_type}')"
-
-    def to_dataclass(self):
-        return self
-
-    def __add__(self, other):
-        return AtomDataclass(self.value + other.value)
-
-    def __sub__(self, other):
-        return AtomDataclass(self.value - other.value)
-
-    def __mul__(self, other):
-        return AtomDataclass(self.value * other.value)
-
-    def __truediv__(self, other):
-        return AtomDataclass(self.value / other.value)
-
-    def __eq__(self, other):
-        if isinstance(other, AtomDataclass):
-            return self.value == other.value
-        return False
-
-    def __lt__(self, other):
-        if isinstance(other, AtomDataclass):
-            return self.value < other.value
-        return False
-
-    def __le__(self, other):
-        if isinstance(other, AtomDataclass):
-            return self.value <= other.value
-        return False
-
-    def __gt__(self, other):
-        if isinstance(other, AtomDataclass):
-            return self.value > other.value
-        return False
-
-    def __ge__(self, other):
-        if isinstance(other, AtomDataclass):
-            return self.value >= other.value
-        return False
-
     def encode(self) -> bytes:
         data_type_bytes = self.data_type.encode('utf-8')
         data_bytes = self._encode_data()
-        header = struct.pack('!I', len(data_bytes))
+        header = struct.pack('!I', len(data_type_bytes))
         return header + data_type_bytes + data_bytes
-    
+
     def _encode_data(self) -> bytes:
         if self.data_type == 'string':
             return self.value.encode('utf-8')
@@ -114,13 +69,13 @@ class AtomDataclass(Generic[T], Atom):
             )
         else:
             raise ValueError(f"Unsupported data type: {self.data_type}")
-    
+
     def decode(self, data: bytes) -> None:
         header_length = struct.unpack('!I', data[:4])[0]
         data_type_bytes = data[4:4 + header_length]
         data_type = data_type_bytes.decode('utf-8')
         data_bytes = data[4 + header_length:]
-
+        
         type_map_reverse = {
             'string': 'str',
             'integer': 'int',
@@ -166,51 +121,79 @@ class AtomDataclass(Generic[T], Atom):
     def execute(self, *args, **kwargs) -> Any:
         pass
 
+    def __repr__(self):
+        return f"AtomDataclass(id={id(self)}, value={self.value}, data_type='{self.data_type}')"
+
+    def to_dataclass(self):
+        return self
+    
+    # Overloaded operators
+    def __add__(self, other):
+        return AtomDataclass(self.value + other.value)
+
+    def __sub__(self, other):
+        return AtomDataclass(self.value - other.value)
+
+    def __mul__(self, other):
+        return AtomDataclass(self.value * other.value)
+
+    def __truediv__(self, other):
+        return AtomDataclass(self.value / other.value)
+
+    def __eq__(self, other):
+        return self.value == other.value
+
+    def __lt__(self, other):
+        return self.value < other.value
+
+    def __le__(self, other):
+        return self.value <= other.value
+
+    def __gt__(self, other):
+        return self.value > other.value
+
+    def __ge__(self, other):
+        return self.value >= other.value
+
 @dataclass
 class FormalTheory(Atom, Generic[T]):
-    """
-    FormalTheory is a specialized class extending Atom to model theoretical constructs using reflexivity, symmetry, and transitivity as logical properties.
-    Attributes:
-        reflexivity, symmetry, transitivity, transparency: Callable lambdas for various logical operations.
-        case_base: Default dictionary to hold case mappings.
-    Methods:
-        __post_init__(): Initializes the case_base with logic operations.
-        if_else and if_else_a: Conditional logic operations.
-        compare: Examines symmetry within a list of AtomDataclass.
-        encode and decode: Handle encoding/decoding for formal theory properties.
-        execute: Placeholder for operations execution.
-    """
     reflexivity: Callable[[T], bool] = lambda x: x == x
     symmetry: Callable[[T, T], bool] = lambda x, y: x == y
     transitivity: Callable[[T, T, T], bool] = lambda x, y, z: (x == y) and (y == z) and (x == z)
     transparency: Callable[[Callable[..., T], T, T], T] = lambda f, x, y: f(True, x, y) if x == y else None
-    case_base: Dict[str, Callable[[T, T], T]] = field(default_factory=dict)
+    case_base: Dict[str, Callable[..., bool]] = field(default_factory=dict)
     
     def __post_init__(self):
-        """
-        "This tension between theory and anti-theory can be seen as a driving force
-        for scientific progress and the continuous refinement of theoretical frameworks."
-        """
         self.case_base = {
             '⊤': lambda x, _: x,
             '⊥': lambda _, y: y,
-            'a': self.if_else_a
+            'a': self.if_else_a,
+            '¬': lambda a: not a,
+            '∧': lambda a, b: a and b,
+            '∨': lambda a, b: a or b,
+            '→': lambda a, b: (not a) or b,
+            '↔': lambda a, b: (a and b) or (not a and not b),
+            '¬∨': lambda a, b: not (a or b),  # NOR operation
+            '¬∧': lambda a, b: not (a and b),  # NAND operation
+            'contrapositive': self.contrapositive
         }
-
+    
     def if_else(self, a: bool, x: T, y: T) -> T:
         return x if a else y
 
     def if_else_a(self, x: T, y: T) -> T:
         return self.if_else(True, x, y)
 
+    def contrapositive(self, a: bool, b: bool) -> bool:
+        return (not b) or (not a)
+    
     def compare(self, atoms: List[AtomDataclass[T]]) -> bool:
         if not atoms:
             return False
         comparison = [self.symmetry(atoms[0].value, atoms[i].value) for i in range(1, len(atoms))]
         return all(comparison)
-
+    
     def encode(self) -> bytes:
-        # Example encoding for formal theory properties
         return str(self.case_base).encode()
 
     def decode(self, data: bytes) -> None:
@@ -218,20 +201,17 @@ class FormalTheory(Atom, Generic[T]):
         pass
 
     def execute(self, *args, **kwargs) -> Any:
-        # Placeholder
         pass
 
     def to_dataclass(self):
         return super().to_dataclass()
-
+    
     def __repr__(self):
         case_base_repr = {
             key: (value.__name__ if callable(value) else value)
             for key, value in self.case_base.items()
         }
         return (f"""FormalTheory(\n
-    "This tension between theory and anti-theory can be seen as a driving force
-    for scientific progress and the continuous refinement of theoretical frameworks."\n
     reflexivity={self.reflexivity.__name__},\n
     symmetry={self.symmetry.__name__},\n
     transitivity={self.transitivity.__name__},\n
@@ -249,18 +229,22 @@ def repl():
     atom3 = atom1 + atom2
     print(f"atom1 + atom2 = {atom3}")
 
-    encoded = atom3.encode()
+    encoded = atom3._encode_data()
     print(f"Encoded atom3: {encoded}")
 
-    atom4 = AtomDataclass(0)
-    print(f"Decoded atom4: {atom4}")
+    decoder = encoded.decode()
+    print(f"Decoded atom3: {type(decoder), decoder.__repr__(), decoder.__dir__()} size: {decoder.__sizeof__()} kb, memory address: {hex(id(decoder))}")
 
     theory = FormalTheory[int]()
     print(theory)
+    print(f"Encoded theory: {theory.encode()}")
 
-    atoms = [AtomDataclass(10), AtomDataclass(10)]
+    atoms = [AtomDataclass(10), AtomDataclass(10), AtomDataclass(20)]
     comparison = theory.compare(atoms)
     print(f"Comparison result: {comparison}")
+
+    contrapositive_result = theory.contrapositive(True, False)
+    print(f"Contrapositive result: {contrapositive_result}")
 
 if __name__ == "__main__":
     repl()
