@@ -61,6 +61,31 @@ class ParseTreeAtom(Atom):
                 bnf_repr += f"{indentation}  {child}\n"
         return bnf_repr
 
+    class ParseTreeAtom:
+        def __init__(self, label, value=None, children=None):
+            self.label = label
+            self.value = value
+            self.children = children if children else []  # Ensure children is always a list
+
+
+    def to_string(self, indent=""):
+        """
+        Returns a string representation of the ParseTreeAtom and its children.
+
+        Args:
+            indent (str, optional): The current indentation level. Defaults to "".
+
+        Returns:
+            str: The string representation of the syntax tree.
+        """
+        result = f"{indent}{self.label}"
+        if self.value:
+            result += f"({self.value})"
+        if self.children:
+            result += "\n"
+            for child in self.children:
+                result += child.to_string(indent + "  ")
+        return result
 
 def generate_bnf(obj, class_name=None, indent=0):
     if class_name is None:
@@ -292,6 +317,70 @@ class FormalTheory(Atom, Generic[T]):
     case_base={case_base_repr}
     )"""
 
+
+
+
+def create_digit_atom(label, value):
+    """
+    Creates a ParseTreeAtom for a single digit.
+
+    Args:
+        label (str): The label for the atom (e.g., "digit").
+        value (str): The value of the digit (e.g., "9").
+
+    Returns:
+        ParseTreeAtom: The created ParseTreeAtom object.
+    """
+    if isinstance(value, int):
+        digits = [ParseTreeAtom("digit", str(d)) for d in str(value)]
+        return ParseTreeAtom(label="integer", children=digits)
+    return ParseTreeAtom(label=label, children=[ParseTreeAtom(label=str(value))])
+
+def create_integer_atom(value):
+    """
+    Creates a ParseTreeAtom for an integer.
+
+    Args:
+        value (int or float): The value of the integer.
+
+    Returns:
+        ParseTreeAtom: The created ParseTreeAtom object representing the integer.
+    """
+    if isinstance(value, int):
+        # Handle integer case
+        digits = [create_digit_atom("digit", str(d)) for d in str(value)]  # Create digit atoms for each digit
+        return ParseTreeAtom(label="integer", children=digits)
+    elif isinstance(value, float):
+        # Handle float case (assuming dot notation)
+        integer_part_str = str(int(value))  # Extract integer part as string
+        decimal_part_str = f".{str(value)[len(integer_part_str):]}"  # Extract decimal part as string with dot
+        integer_part = create_integer_atom(int(integer_part_str))  # Create ParseTreeAtom for integer part
+        decimal_part = create_digit_atom(".", decimal_part_str)  # Create ParseTreeAtom for decimal part
+        return ParseTreeAtom(label="floating-point", children=[integer_part, decimal_part])
+    else:
+        raise TypeError("create_integer_atom only accepts int or float values")
+
+def create_floating_point(value):
+    """
+    Creates a ParseTreeAtom for a floating-point number.
+
+    Args:
+        value (float): The floating-point value.
+
+    Returns:
+        ParseTreeAtom: The created ParseTreeAtom representing the floating-point number.
+    """
+    if not isinstance(value, float):
+        raise TypeError("create_floating_point only accepts float values")
+
+    integer_part_str = str(int(value))
+    decimal_part_str = f".{str(value)[len(integer_part_str):]}"
+
+    integer_part = create_integer_atom(int(integer_part_str))
+    decimal_part = create_digit_atom(".", decimal_part_str)
+
+    return ParseTreeAtom(label="floating-point", children=[integer_part, decimal_part])
+
 # Example usage:
 if __name__ == "__main__":
     # Constructing a parse tree based on the provided image
@@ -310,6 +399,8 @@ if __name__ == "__main__":
 
     # Printing the parse tree
     #floating_point.children[1].value = "."
+    integer_93 = create_integer_atom(93)  # Creates ParseTreeAtom for integer 93
+    floating_point_3_14 = create_integer_atom(3.14)  # Creates ParseTreeAtom for float 3.14
 
     # Other AtomDataclass examples
     atom1 = AtomDataclass(value=10)
