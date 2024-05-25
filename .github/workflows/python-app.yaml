@@ -47,12 +47,11 @@ jobs:
             sudo apt-get upgrade -y >> logs/setup.log 2>&1
             python -m pip install --upgrade pip >> logs/setup.log 2>&1
             sudo apt install curl -y
-            pip install -r requirements.txt 
             echo "::set-output name=result::$result" >> logs/setup.log 2>&1
               
       - name: Run main python app
         run: |
-          python main.py . 2>&1 | tee -a logs/app.log logs/python-app.log
+          python main.py 2>&1 | tee -a logs/app.log logs/python-app.log
       - name: Archive test output as artifact
         if: always()
         uses: actions/upload-artifact@v2

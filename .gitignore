@@ -19,3 +19,8 @@ miniconda/
 /.old/*
 __pycache__/
 .hypothesis/*
+
+
+# make, pdm...
+.pdm.lock
+/.pdm-build/*
