@@ -18,3 +18,4 @@ miniconda/
 .ssh/
 /.old/*
 __pycache__/
+.hypothesis/*

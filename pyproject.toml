@@ -17,10 +17,34 @@ content-type = "text/markdown"
 file = "docs/api/README.md"
 content-type = "text/markdown"
 
+[project.optional-dependencies]
+dev = [
+    "pytest", 
+    "mypy", 
+    "pytest-cov", 
+    "black", 
+    "flake8", 
+    "pdm-pep517", 
+    "pdm-pep517-build-backend", 
+    "isort", 
+    "tox", 
+    "pre-commit", 
+    "cffi", 
+    "gcc", 
+    "cmake", 
+    "ctags", 
+    "pytest", 
+    "pytest-benchmark", 
+    "hypothesis",
+    "pdm",
+    "mamba",
+    "micromamba"
+]
+
 [tool.pdm.conda]
 runner = "micromamba"
 channels = ["conda-forge/noarch", "conda-forge", "anaconda"]
-dependencies = ["pdm", "jax", "jupyter", "ipykernel", "openai", "numpy", "pandas", "typing", "xonsh", "pydantic", "pytest", "httpx", "docker"]
+dependencies = ["pdm", "jax", "openai", "pydantic", "httpx"]
 as-default-manager = true
 solver = "libmamba"
 excludes = ["pytest-cov"] # don't install with conda even if it's a dependency from other packages
@@ -32,18 +56,32 @@ download-dir = "/tmp"
 url = "https://url/to/mapping.yaml"
 
 [tool.pdm.conda.optional-dependencies]
-extra = ["anaconda:ffmpeg"] # non python dependency, obtained from anaconda channel
+extra = ["anaconda:ffmpeg", "anaconda::xonsh", "anaconda::pdm", "anaconda::jupyter", "anaconda::ipykernel", "anaconda::numpy", "anaconda::mypy", "anaconda::ipykernel", "anaconda::xonsh"]
 
 [tool.pdm.conda.dev-dependencies]
-dev = ["pytest", "mypy"]
+dev = ["pytest", "mypy", "pytest-cov", "black", "flake8", "pdm-pep517", "pdm-pep517-build-backend", "isort", "tox", "pre-commit", "cffi", "gcc", "cmake", "ctags", "pytest", "pytest-benchmark", "hypothesis"]
 
-[build-system.backends.go]
-name = "go"
-requires = ["go>=1.16"]
+[tool.black]
+line-length = 88
 
-[build-system.backends.npm]
-name = "npm"
-requires = ["npm>10.4.0"]
+[tool.flake8]
+max-line-length = 88
+extend-ignore = ["E203", "W503"]
+
+[tool.mypy]
+python_version = "3.11"
+disallow_untyped_defs = true
+ignore_missing_imports = true
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
 
 [project.scripts]
 main = "main.py:main"
+bench = "src/bench/bench.py"
+
+[build]
+root-dir = "."
