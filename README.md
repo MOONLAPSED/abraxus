@@ -12,6 +12,13 @@ make pre-commit-install
 pdm run python main.py
 ```
 
+## first run in a minit?
+```
+pipx upgrade pdm
+pdm update
+pdm cache clear
+pdm install --clean
+```
 
 
 ### usage/install context

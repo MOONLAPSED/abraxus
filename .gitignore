@@ -24,3 +24,5 @@ __pycache__/
 # make, pdm...
 .pdm.lock
 /.pdm-build/*
+pdm.lock
+.venv/

@@ -6,7 +6,7 @@ build-backend = "pdm.backend"
 name = "abraxus"
 description = "abraxus, part of the cognosis project"
 authors = [{ name = "MOONLAPSED", email = "MOONLAPSED@gmail.com" }]
-version = "0.1.0"
+version = "0.1.2"
 requires-python = ">= 3.11"
 
 [project.readme]
@@ -30,15 +30,13 @@ dev = [
     "tox", 
     "pre-commit", 
     "cffi", 
-    "gcc", 
     "cmake", 
     "ctags", 
-    "pytest", 
-    "pytest-benchmark", 
-    "hypothesis",
     "pdm",
     "mamba",
-    "micromamba"
+    "micromamba",
+    "pytest-benchmark", 
+    "hypothesis",
 ]
 
 [tool.pdm.conda]
@@ -47,7 +45,7 @@ channels = ["conda-forge/noarch", "conda-forge", "anaconda"]
 dependencies = ["pdm", "jax", "openai", "pydantic", "httpx"]
 as-default-manager = true
 solver = "libmamba"
-excludes = ["pytest-cov"] # don't install with conda even if it's a dependency from other packages
+excludes = ["pytest-cov"]  # don't install with conda even if it's a dependency from other packages
 installation-method = "copy"
 batched-commands = true
 
@@ -56,10 +54,38 @@ download-dir = "/tmp"
 url = "https://url/to/mapping.yaml"
 
 [tool.pdm.conda.optional-dependencies]
-extra = ["anaconda:ffmpeg", "anaconda::xonsh", "anaconda::pdm", "anaconda::jupyter", "anaconda::ipykernel", "anaconda::numpy", "anaconda::mypy", "anaconda::ipykernel", "anaconda::xonsh"]
+extra = [
+    "anaconda:ffmpeg",
+    "anaconda::xonsh",
+    "anaconda::pdm",
+    "anaconda::jupyter",
+    "anaconda::ipykernel",
+    "anaconda::numpy",
+    "anaconda::mypy",
+    "anaconda::ipykernel",
+    "anaconda::xonsh",
+]
 
 [tool.pdm.conda.dev-dependencies]
-dev = ["pytest", "mypy", "pytest-cov", "black", "flake8", "pdm-pep517", "pdm-pep517-build-backend", "isort", "tox", "pre-commit", "cffi", "gcc", "cmake", "ctags", "pytest", "pytest-benchmark", "hypothesis"]
+dev = [
+    "pytest",
+    "mypy",
+    "pytest-cov",
+    "black",
+    "flake8",
+    "pdm-pep517",
+    "pdm-pep517-build-backend",
+    "isort",
+    "tox",
+    "pre-commit",
+    "cffi",
+    "gcc",
+    "cmake",
+    "ctags",
+    "pytest",
+    "pytest-benchmark",
+    "hypothesis",
+]
 
 [tool.black]
 line-length = 88
@@ -80,8 +106,8 @@ profile = "black"
 testpaths = ["tests"]
 
 [project.scripts]
-main = "main.py:main"
-bench = "src/bench/bench.py"
+main = "main:main"  # Ensure the actual main function matches the entry point
+bench = "src.bench.bench:main"  # Ensure the actual benchmark function matches the entry point
 
 [build]
 root-dir = "."
