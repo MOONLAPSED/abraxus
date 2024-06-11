@@ -13,13 +13,17 @@ pdm run python main.py
 ```
 
 ## first run in a minit?
+
+`python -m pip install -U pdm`
+
+OR, if a refreshing anew:
+
 ```
 pipx upgrade pdm
 pdm update
 pdm cache clear
 pdm install --clean
 ```
-
 
 ### usage/install context
 
