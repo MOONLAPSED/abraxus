@@ -371,6 +371,7 @@ def main():
     create_virtualenv()
     parser = argparse.ArgumentParser(description="Setup and run Abraxus project")
     parser.add_argument('-m', '--mode', choices=['dev', 'non-dev'], help="Setup mode: 'dev' or 'non-dev'")
+    parser.add_argument('--run-user-main', action='store_true', help="Run the user-defined main function")
     args = parser.parse_args()
     mode = args.mode
     if not mode:
@@ -387,10 +388,17 @@ def main():
     else:
         install()
         run_command("pdm run python main.py", shell=True)
+
+    if args.run_user_main:
+        usermain()  # Call the user-defined main function
+    else:
+        print("No additional arguments provided. Skipping user-defined main function.")
+
     introspect()
 
 if __name__ == "__main__":
     main()
+
 
 # | Cognitive Comment: Define User-defined Main Function and Associated Routines |
 
