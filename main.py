@@ -384,7 +384,7 @@ def main():
         test()
         bench()
         pre_commit_install()
-        run_command("pdm run python src/bench/bench.py", shell=True)
+        # run_command("pdm run python src/bench/bench.py", shell=True)
     else:
         install()
         run_command("pdm run python main.py", shell=True)
