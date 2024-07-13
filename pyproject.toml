@@ -6,7 +6,7 @@ build-backend = "pdm.backend"
 name = "abraxus"
 description = "abraxus, part of the cognosis project"
 authors = [{ name = "MOONLAPSED", email = "MOONLAPSED@gmail.com" }]
-version = "0.1.2"
+version = "0.1.4"
 requires-python = ">= 3.11"
 
 [project.readme]
@@ -17,26 +17,29 @@ content-type = "text/markdown"
 file = "docs/api/README.md"
 content-type = "text/markdown"
 
-[project.optional-dependencies]
-dev = [
-    "pytest", 
-    "mypy", 
-    "pytest-cov", 
-    "black", 
-    "flake8", 
-    "pdm-pep517", 
-    "pdm-pep517-build-backend", 
-    "isort", 
-    "tox", 
-    "pre-commit", 
-    "cffi", 
-    "cmake", 
-    "ctags", 
-    "pdm",
-    "mamba",
-    "micromamba",
-    "pytest-benchmark", 
+# Moved dev dependencies to [tool.pdm.dev-dependencies]
+[tool.pdm.dev-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "pytest-benchmark",
     "hypothesis",
+]
+lint = [
+    "flake8",
+    "black",
+    "isort",
+    "mypy",
+]
+dev = [
+    "pdm-pep517",
+    "pdm-pep517-build-backend",
+    "tox",
+    "pre-commit",
+    "cffi",
+    "cmake",
+    "ctags",
+    "pdm",
 ]
 
 [tool.pdm.conda]
@@ -45,7 +48,7 @@ channels = ["conda-forge/noarch", "conda-forge", "anaconda"]
 dependencies = ["pdm", "jax", "openai", "pydantic", "httpx"]
 as-default-manager = true
 solver = "libmamba"
-excludes = ["pytest-cov"]  # don't install with conda even if it's a dependency from other packages
+excludes = ["pytest-cov"]
 installation-method = "copy"
 batched-commands = true
 
@@ -64,27 +67,6 @@ extra = [
     "anaconda::mypy",
     "anaconda::ipykernel",
     "anaconda::xonsh",
-]
-
-[tool.pdm.conda.dev-dependencies]
-dev = [
-    "pytest",
-    "mypy",
-    "pytest-cov",
-    "black",
-    "flake8",
-    "pdm-pep517",
-    "pdm-pep517-build-backend",
-    "isort",
-    "tox",
-    "pre-commit",
-    "cffi",
-    "gcc",
-    "cmake",
-    "ctags",
-    "pytest",
-    "pytest-benchmark",
-    "hypothesis",
 ]
 
 [tool.black]
@@ -106,8 +88,12 @@ profile = "black"
 testpaths = ["tests"]
 
 [project.scripts]
-main = "main:main"  # Ensure the actual main function matches the entry point
-bench = "src.bench.bench:main"  # Ensure the actual benchmark function matches the entry point
+main = "main:main"
+bench = "src.bench.bench:main"
 
-[build]
-root-dir = "."
+# Added scripts section for development tasks
+[tool.pdm.scripts]
+lint = "flake8 ."
+format = { composite = ["black .", "isort ."] }
+typecheck = "mypy ."
+test = "pytest"

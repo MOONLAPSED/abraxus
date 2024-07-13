@@ -98,30 +98,6 @@ def ensure_pdm():
         state['pdm_installed'] = True
 
 
-# <<<<<<< possible_deprecation
-def create_virtualenv():
-    """Create a virtual environment and activate it using pdm"""
-    global state
-    os.environ["PDM_VENV_IN_PROJECT"] = "1"
-    venv_path = ".venv"
-    if os.path.exists(venv_path):
-        choice = input("Virtual environment already exists. Overwrite? (y/n): ").lower()
-        if choice == 'y':
-            print("Deactivating and deleting existing virtual environment...")
-            ensure_delete(venv_path)
-            print("Virtual environment deleted.")
-            run_command("pdm venv create", shell=True)
-        else:
-            print("Reusing the existing virtual environment.")
-    else:
-        run_command("pdm venv create", shell=True)
-    run_command("pdm lock", shell=True)
-    run_command("pdm install", shell=True, verbose=True)
-    state['virtualenv_created'] = True
-    state['dependencies_installed'] = True
-#  possible_deprecation >>>>>>>
-
-
 def prompt_for_mode():
     """Prompt the user to choose between development and non-development setup"""
     while True:
@@ -199,7 +175,7 @@ def main():
     ensure_pdm()
     update_shell_environment()
     update_path()
-    # create_virtualenv()  <<<<possible deprecation>>>>>>>
+
     parser = argparse.ArgumentParser(description="Setup and run Abraxus project")
     parser.add_argument('-m', '--mode', choices=['dev', 'non-dev'], help="Setup mode: 'dev' or 'non-dev'")
     parser.add_argument('--run-user-main', action='store_true', help="Run the user-defined main function")
@@ -231,6 +207,4 @@ def main():
 if __name__ == "__main__":
     main()
     update_path()
-
-
-
+    # use ./src/utils/cleanup.py to clean up the environment (optional: clean up pipx and pdm and conda)
