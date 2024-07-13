@@ -212,7 +212,16 @@ class FormalTheory(Generic[T], Atom):
         if operation not in self.case_base:
             raise ValueError(f"Unsupported logical operation: {operation}")
         return self.case_base[operation](*args)
-
+    
+    """alternate implementation of execute():
+        if operation in self.case_base:
+            result = self.case_base[operation](*args)
+            logging.debug(f"Operation result: {result}")
+            return result
+        else:
+            raise ValueError(f"Operation {operation} not supported in FormalTheory.")
+    """
+           
     def __repr__(self) -> str:
         case_base_repr = {key: (value.__name__ if callable(value) else value) for key, value in self.case_base.items()}
         return (f"FormalTheory(\n"

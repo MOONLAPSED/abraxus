@@ -1,6 +1,3 @@
-Certainly! Here is your specification document formatted nicely in Markdown with a table of contents (TOC) featuring "wikilinks" to the specified subsections:
-
-```markdown
 # AtomicBot Standard Specification
 
 ## Table of Contents
