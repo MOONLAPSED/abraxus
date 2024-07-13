@@ -495,3 +495,41 @@ if __name__ == "__main__":
     decoded_response = ActionResponse(action_name="", status="", retcode=0)
     decoded_response.decode(encoded_response)
     print(decoded_response.to_dataclass())  # Should print the same dict as action_response.response_data
+
+def usermain(arg=None):
+    import src.app
+    from src.app import FormalTheory, AtomicData
+    from src.app import ScopeLifetimeGarden, ThreadSafeContextManager
+    if arg:
+        print(f"Main called with argument: {arg}")
+    else:
+        print("Main called with no arguments")
+    top = AtomicData(value=True)
+    bottom = AtomicData(value=False)
+    formal_theory = FormalTheory[int](top_atom=top, bottom_atom=bottom)
+    encoded_ft = formal_theory.encode()
+    print("Encoded FormalTheory:", encoded_ft)
+    new_formal_theory = FormalTheory[int](top_atom=top, bottom_atom=bottom)
+    new_formal_theory.decode(encoded_ft)
+    print("Decoded FormalTheory:", new_formal_theory)
+    try:
+        result = formal_theory.execute('∧', True, True)
+        print("Execution Result:", result)
+    except NotImplementedError:
+        print("Execution logic not implemented for FormalTheory.")
+    atomic_data = AtomicData(value="Hello World")
+    encoded_data = atomic_data.encode()
+    print("Encoded AtomicData:", encoded_data)
+    new_atomic_data = AtomicData(value=None)
+    new_atomic_data.decode(encoded_data)
+    print("Decoded AtomicData:", new_atomic_data)
+    print("Using ThreadSafeContextManager")
+    with ThreadSafeContextManager():
+        pass
+    garden = ScopeLifetimeGarden()
+    garden.set(AtomicData(value="Initial Data"))
+    print("Garden Data:", garden.get())
+    with garden.scope():
+        garden.set(AtomicData(value="New Data"))
+        print("Garden Data:", garden.get())
+    print("Garden Data:", garden.get())
