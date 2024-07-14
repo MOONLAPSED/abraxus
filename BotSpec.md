@@ -392,9 +392,31 @@ An example [[event]] received from [[AtomicBot]]:
 ## 15. Markdown Encoding and Double-Bracketed Entities
 
 ```markdown
-This specification is designed to be readable in plain text and common markdown renderers. To facilitate knowledge graphing and associative linking of concepts, significant entities are enclosed in double brackets like this: [[Entity Name]].
-When rendered in an environment that supports it (like the Obsidian knowledge base), the double-bracketed terms become clickable links that can display contextual information and connections to related concepts.
-For example, [[API]] could link to documentation on what an API is, [[Chatbot]] may link to background on chatbots, and [[JSON Data Interchange Format]] could expand into details on the JSON specification.
-This makes the document itself an interactive knowledge repository in supported environments, while still being readable as plain markdown elsewhere. The double-bracket syntax was chosen specifically for compatibility with the popular Obsidian.md format.
-While not a requirement of the AtomicBot specification, using this markup style can turn documentation into a powerful conceptual knowledge base when authored with tools like Obsidian that support this notation.
+#Markdown Encoding and Linkage
+
+This specification is designed to be readable in plain text and common markdown renderers, leveraging both double-bracketed entities and angle-bracketed chunks for enhanced interactivity and modularity.
+Double-Bracketed Entities
+
+To facilitate knowledge graphing and associative linking of concepts, significant entities are enclosed in double brackets like this: [[Entity Name]]. When rendered in environments that support it (such as Obsidian), the double-bracketed terms become clickable links that can display contextual information and connections to related concepts. These entities are associated with the ~/kb/* knowledge base directory.
+
+For example:
+
+    [[API]] could link to documentation on what an API is.
+    [[Chatbot]] may link to background on chatbots.
+    [[JSON Data Interchange Format]] could expand into details on the JSON specification.
+
+This makes the document itself an interactive knowledge repository in supported environments, while still being readable as plain markdown elsewhere. The double-bracket syntax was chosen specifically for compatibility with the popular Obsidian.md format. Although not a requirement of the AtomicBot specification, using this markup style can turn documentation into a powerful conceptual knowledge base when authored with tools like Obsidian that support this notation.
+Angle-Bracketed Chunks
+
+To organize and modularize the document, this specification leverages the use of angle-bracketed chunks. Chunks are denoted by double angle brackets like this: <<chunk_name>>. This format allows for the inclusion of code or content sections from different parts of the document in a structured and readable way. These chunks are associated with the ~/db/* database section, and the system is designed to search this directory for any angle-bracketed entities and attempt to resolve them to specific file system objects.
+
+When rendered or processed in the [[abraxus]] literate cognitive framing environment (CLI), the double angle-bracketed chunks act as placeholders for code or content blocks defined elsewhere in the document. Additionally, these chunks can be used as anchor tags, allowing for micro-navigation to specific subsections in a command line interface style. This enhances the document's usability by enabling quick navigation to key sections directly.
+
+For instance:
+
+    <<initialization>> could link to a file system object in ~/db/* that initializes variables or settings.
+    <<function_definitions>> might navigate to a section compiling all function definitions together.
+    <<cleanup>> could ensure resources are properly released at the end of a script.
+
+This chunking approach makes it easier to navigate and understand the document's structure, especially in larger specifications or literate programs. The double angle-bracket syntax was chosen for its clarity and compatibility with many literate programming conventions, fitting seamlessly with tools that support this notation. While not a requirement of the AtomicBot specification, using this markup style can transform documentation into a modular and easily navigable structure, especially when used with tools that support angle-bracketed chunks and command line navigation.
 ```
