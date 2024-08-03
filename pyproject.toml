@@ -45,7 +45,7 @@ dev = [
 [tool.pdm.conda]
 runner = "micromamba"
 channels = ["conda-forge/noarch", "conda-forge", "anaconda"]
-dependencies = ["pdm", "jax", "openai", "pydantic", "httpx"]
+dependencies = ["pdm", "jax", "openai", "pydantic", "aiohttp"]
 as-default-manager = true
 solver = "libmamba"
 excludes = ["pytest-cov"]

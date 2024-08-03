@@ -206,5 +206,4 @@ def main():
 
 if __name__ == "__main__":
     main()
-    update_path()
     # use ./src/utils/cleanup.py to clean up the environment (optional: clean up pipx and pdm and conda)

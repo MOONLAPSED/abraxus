@@ -1,6 +1,13 @@
+"""The idea is to use constrain satisfaction, matrixes, and a limited resolution
+space (default 2^8) to preform Newton lambda-calculus. We can use logical theories
+and test them and string them together to create syntax and emergence representing
+various conserved quantities as-yet not-understood which I posit are quantum
+entanglment-related and also involve language."""
 import math
 import random
 import struct
+import turtle
+import time
 
 class ComplexNumber:
     def __init__(self, real, imag):
@@ -33,8 +40,7 @@ class ComplexQubit:
 
     def _normalize(self):
         norm = abs(self.alpha)
-        if norm > 1:
-            self.alpha = self.alpha / norm
+        self.alpha = self.alpha / norm  # Always normalize
 
     @property
     def beta(self):
@@ -59,9 +65,6 @@ class ComplexQubit:
                 math.cos(theta))
 
 def visualize_bloch_sphere(qubits):
-    import turtle
-    import time
-
     screen = turtle.Screen()
     screen.title("Qubit States on Bloch Sphere")
     screen.setup(width=800, height=800)
@@ -85,6 +88,18 @@ def visualize_bloch_sphere(qubits):
     t.goto(0, 0)
     t.pendown()
     t.circle(200, steps=18)
+
+    # Draw axes
+    t.penup()
+    t.goto(0, 0)
+    t.pendown()
+    t.goto(0, 200)
+    t.goto(0, -200)
+    t.penup()
+    t.goto(0, 0)
+    t.pendown()
+    t.goto(200, 0)
+    t.goto(-200, 0)
 
     # Plot qubit states
     for qubit in qubits:
