@@ -16,6 +16,39 @@ from functools import wraps
 import hashlib
 import inspect
 
+class CustomFormatter(logging.Formatter):
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    green = "\x1b[32;20m"
+    reset = "\x1b[0m"
+    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+
+    FORMATS = {
+        logging.DEBUG: grey + format + reset,
+        logging.INFO: green + format + reset,
+        logging.WARNING: yellow + format + reset,
+        logging.ERROR: red + format + reset,
+        logging.CRITICAL: bold_red + format + reset
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+def setup_logger(name):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(CustomFormatter())
+    logger.addHandler(ch)
+    return logger
+
+Logger = setup_logger(__name__)
+
 # Everything in Python is an object, and every object has a type. The type of an object is a class. Even the type class itself is an instance of type.
 T = TypeVar('T', bound=Type)  # type is synonymous for class: T = type(class()) or vice-versa; are still ffc function
 # functions defined within a class become method objects when accessed through an instance of the class
@@ -80,8 +113,8 @@ def bench(func):  # decorator
 
 # ADMIN-scoped virtual memory-relevant hash mapping via hex #s
 def __atom__(cls: Type[{T, V}]) -> Type[{T, V}]:  # automatic decorator
-    bytearray = bytearray(cls.__name__.encode('utf-8'))
-    hash_object = hashlib.sha256(bytearray)
+    byte_array = bytearray(cls.__name__.encode('utf-8'))
+    hash_object = hashlib.sha256(byte_array)
     hash_hex = hash_object.hexdigest()
     return cls(hash_hex)
 
@@ -89,7 +122,7 @@ def __atom__(cls: Type[{T, V}]) -> Type[{T, V}]:  # automatic decorator
 def atom(cls: Type[{T, V}]) -> Type[{T, V}]:  # decorator
     try:
         cls.id = __atom__(cls.__name__)
-    except atomError as e:
+    except Exception as e:
         Logger.error(f"Error in {cls.__name__}: {str(e)}")
         raise        
     return (cls, cls.id, time.time())
@@ -136,7 +169,7 @@ class Atom(ABC):  # homoiconic (Atoms, not objects) abstract base class for all 
     def __str__(self) -> str:
         return __repr__(self)
     
-    def _infer_data_type(self) -> DataType:
+    def _infer_data_type(self) -> AtomType:
         if isinstance(self.value, int):
             return DataType.INTEGER
         elif isinstance(self.value, float):
