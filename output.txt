@@ -1,0 +1,5 @@
+Kernel task was cancelled
+Theory 1 evaluation results:
+[5, 7]
+Theory 2 evaluation results:
+[7]
