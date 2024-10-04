@@ -89,7 +89,6 @@ testpaths = ["tests"]
 
 [project.scripts]
 main = "main:main"
-bench = "src.bench.bench:main"
 
 # Added scripts section for development tasks
 [tool.pdm.scripts]

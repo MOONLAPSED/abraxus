@@ -7,7 +7,6 @@ from hypothesis import given, strategies as st
 # Ensure the parent directory is added to sys.path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..', 'app')))
 
-# Now imports should work correctly
 from app import AtomicData, FormalTheory, Event, Action, ActionResponse
 
 # Initialize logging
