@@ -19,7 +19,8 @@ miniconda/
 /.old/*
 __pycache__/
 .hypothesis/*
-
+*.idea
+/.idea/*
 
 # make, pdm...
 .pdm.lock
