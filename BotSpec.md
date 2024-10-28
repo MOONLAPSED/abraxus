@@ -1,11 +1,16 @@
-Certainly! Here is your specification document formatted nicely in Markdown with a table of contents (TOC) featuring "wikilinks" to the specified subsections:
-
-```markdown
 # AtomicBot Standard Specification
 
 ## Table of Contents
 
-- [Add optional fields commonly used in events](#add-optional-fields-commonly-used-in-events)
+- [AtomicBot Standard Specification](#atomicbot-standard-specification)
+  - [Table of Contents](#table-of-contents)
+  - [1. Introduction](#1-introduction)
+  - [2. Scope](#2-scope)
+  - [3. Normative References](#3-normative-references)
+  - [4. Definitions](#4-definitions)
+  - [5. Events](#5-events)
+    - [Event Format](#event-format)
+  - [Add optional fields commonly used in events](#add-optional-fields-commonly-used-in-events)
   - [6. Actions](#6-actions)
     - [6.1 Actions Overview](#61-actions-overview)
     - [6.2 Sending a Message Example](#62-sending-a-message-example)

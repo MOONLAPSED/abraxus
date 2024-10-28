@@ -476,3 +476,23 @@ class AtomicTheory(Atom):
                 continue
             except Exception as e:
                 logging.error(f"Error in worker: {e}")
+
+class FfiAtom(Atom):
+    def __init__(self, target_language: str, function_name: str, args: List[Atom]):
+        super().__init__(tag="ffi_call", value=None)
+        self.target_language = target_language
+        self.function_name = function_name
+        self.args = args
+        self.ffi_function = None
+        self.ffi_module = None
+        self.ffi_library = None
+    
+    async def evaluate_ctype(self): # Assuming you're using ctypes for C FFI
+        try:
+            lib = ctypes.cdll.LoadLibrary(self.target_language)
+            func = getattr(lib, self.function_name)
+            arg_values = await asyncio.gather(*(arg.evaluate() for arg in self.args))
+            result = func(*arg_values) # Handle the result based on its type and return it as a suitable Python object
+            return result
+        except Exception as e: # Handle errors and return an appropriate value or raise an exception
+            raise e
