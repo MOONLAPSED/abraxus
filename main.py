@@ -1,209 +1,910 @@
-# main.py
-# This script is part of "cognosis - cognitive coherence coroutines" project,
-# which is a pythonic implementation of a model cognitive system,
-# utilizing concepts from signal processing, cognitive theories,
-# and machine learning to create adaptive systems.
-
-import subprocess
-import sys
-import argparse
-import os
-import shutil
-import platform
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
-from typing import Callable, Dict, Any, TypeVar, Generic, Optional, List
-import logging
+import asyncio
+import inspect
 import json
+import logging
+import os
+import pathlib
 import struct
+import sys
+import threading
+import time
+import traceback
+import uuid
+from abc import ABC, abstractmethod
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
+from dataclasses import dataclass, field
+from enum import Enum, auto
+from functools import wraps
+from queue import Queue, Empty
+from typing import Any, Dict, List, Optional, Union, Callable, TypeVar, Tuple, Generic, Set, Coroutine, Type, ClassVar, Protocol, runtime_checkable
+from queue import Queue, Empty
 
-T = TypeVar('T')  # Type Variable to allow type-checking, linting,.. of Generic "T" and "V"
+Atom = TypeVar('Atom')
 
-def run_command(command, check=True, shell=False, verbose=False):
-    """Utility to run a shell command and handle exceptions"""
-    if verbose:
-        command += " -v"
+@dataclass
+class Atom:
+    """Base Atom class protocol for all Atom()(s)."""
+    id: str = None
+
+@runtime_checkable
+class Atom(Protocol):
+    id: str
+
+@dataclass
+class ErrorAtom(Atom):
+    error_type: str
+    message: str
+    context: Dict[str, Any] = field(default_factory=dict)
+    traceback: Optional[str] = None
+
+    @classmethod
+    def from_exception(cls, exception: Exception, context: Dict[str, Any] = None):
+        return cls(
+            error_type=type(exception).__name__,
+            message=str(exception),
+            context=context or {},
+            traceback=traceback.format_exc()
+        )
+
+class EventBus(Atom):  # Pub/Sub homoiconic event bus
+    def __init__(self, id: str = "event_bus"):
+        super().__init__(id=id)
+        self._subscribers: Dict[str, List[Callable[[str, Any], Coroutine[Any, Any, None]]]] = {}
+
+    async def subscribe(self, event_type: str, handler: Callable[[str, Any], Coroutine[Any, Any, None]]) -> None:
+        if event_type not in self._subscribers:
+            self._subscribers[event_type] = []
+        self._subscribers[event_type].append(handler)
+
+    async def unsubscribe(self, event_type: str, handler: Callable[[str, Any], Coroutine[Any, Any, None]]) -> None:
+        if event_type in self._subscribers:
+            self._subscribers[event_type].remove(handler)
+
+    async def publish(self, event_type: str, event_data: Any) -> None:
+        if event_type in self._subscribers:
+            for handler in self._subscribers[event_type]:
+                asyncio.create_task(handler(event_type, event_data))
+
+    def encode(self) -> bytes:
+        raise NotImplementedError("EventBus cannot be directly encoded")
+
+    @classmethod
+    def decode(cls, data: bytes) -> None:
+        raise NotImplementedError("EventBus cannot be directly decoded")
+
+# Centralized Error Handling
+class ErrorHandler:
+    def __init__(self, event_bus: Optional[EventBus] = None):
+        self.event_bus = event_bus or EventBus()
+
+    async def handle(self, error_atom: ErrorAtom):
+        """
+        Central error handling method with flexible error management
+        """
+        try:
+            # Publish to system error channel
+            await self.event_bus.publish('system.error', error_atom)
+            
+            # Optional: Log to file or external system
+            self._log_error(error_atom)
+            
+            # Optional: Perform additional error tracking or notification
+            await self._notify_error(error_atom)
+        
+        except Exception as secondary_error:
+            # Fallback error handling
+            print(f"Critical error in error handling: {secondary_error}")
+            print(f"Original error: {error_atom}")
+
+    def _log_error(self, error_atom: ErrorAtom):
+        """
+        Optional method to log errors to file or external system
+        """
+        with open('system_errors.log', 'a') as log_file:
+            log_file.write(f"{error_atom.error_type}: {error_atom.message}\n")
+            if error_atom.traceback:
+                log_file.write(f"Traceback: {error_atom.traceback}\n")
+
+    async def _notify_error(self, error_atom: ErrorAtom):
+        """
+        Optional method for additional error notification
+        """
+        # Could integrate with external monitoring systems
+        # Could send alerts via different channels
+        pass
+
+    def decorator(self, func):
+        """
+        Error handling decorator for both sync and async functions
+        """
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            try:
+                return await func(*args, **kwargs)
+            except Exception as e:
+                error_atom = ErrorAtom.from_exception(e, context={
+                    'args': args,
+                    'kwargs': kwargs,
+                    'function': func.__name__
+                })
+                await self.handle(error_atom)
+                raise
+        
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            try:
+                return func(*args, **kwargs)
+            except Exception as e:
+                error_atom = ErrorAtom.from_exception(e, context={
+                    'args': args,
+                    'kwargs': kwargs,
+                    'function': func.__name__
+                })
+                asyncio.run(self.handle(error_atom))
+                raise
+        
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+
+# Global error handler instance
+global_error_handler = ErrorHandler()
+
+# Convenience decorator
+def handle_errors(func):
+    return global_error_handler.decorator(func)
+
+EventBus = EventBus('EventBus', bound='app')
+
+# Everything in Python is an object, and every object has a type. The type of an object is a class. Even the
+# type class itself is an instance of type. Functions defined within a class become method objects when
+# accessed through an instance of the class
+"""(3.13 std lib)Functions are instances of the function class
+Methods are instances of the method class (which wraps functions)
+Both function and method are subclasses of object
+homoiconism dictates the need for a way to represent all Python constructs as first class citizen(fcc):
+    (functions, classes, control structures, operations, primitive values)
+nominative 'true OOP'(SmallTalk) and my specification demands code as data and value as logic, structure.
+The Atom(), our polymorph of object and fcc-apparent at runtime, always represents the literal source code
+    which makes up their logic and possess the ability to be stateful source code data structure. """
+# Atom()(s) are a wrapper that can represent any Python object, including values, methods, functions, and classes.
+class AtomType(Enum):
+    VALUE = auto()  # implies all Atom()(s) are both their source code and the value generated by their source code (at runtime)
+    FUNCTION = auto()  # are fcc along with object, class, method, etc are polymorphs
+    CLASS = auto()
+    MODULE = auto()  # python 'module' ie. packaging, eg: code as data runtime 'database'
+"""Homoiconism dictates that, upon runtime validation, all objects are code and data.
+To facilitate; we utilize first class functions and a static typing system.
+This maps perfectly to the three aspects of nominative invariance:
+    Identity preservation, T: Type structure (static)
+    Content preservation, V: Value space (dynamic)
+    Behavioral preservation, C: Computation space (transformative)
+    [[T (Type) ←→ V (Value) ←→ C (Callable)]] == 'quantum infodynamics, a triparte element; our Atom()(s)'
+    Meta-Language (High Level)
+      ↓ [First Collapse - Compilation]
+    Intermediate Form (Like a quantum superposition)
+      ↓ [Second Collapse - Runtime]
+    Executed State (Measured Reality)
+What's conserved across these transformations:
+    Nominative relationships
+    Information content
+    Causal structure
+    Computational potential"""
+T = TypeVar('T', bound=any) # T for TypeVar, V for ValueVar. Homoicons are T+V.
+V = TypeVar('V', bound=Union[int, float, str, bool, list, dict, tuple, set, object, Callable, type])
+C = TypeVar('C', bound=Callable[..., Any])  # callable 'T'/'V' first class function interface
+DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE') # 'T' vars (stdlib)
+"""The type system forms the "boundary" theory
+The runtime forms the "bulk" theory
+The homoiconic property ensures they encode the same information
+The holoiconic property enables:
+    States as quantum superpositions
+    Computations as measurements
+    Types as boundary conditions
+    Runtime as bulk geometry"""
+class HoloiconicTransform(Generic[T, V, C]):
+    @staticmethod
+    def flip(value: V) -> C:
+        """Transform value to computation (inside-out)"""
+        return lambda: value
+
+    @staticmethod
+    def flop(computation: C) -> V:
+        """Transform computation to value (outside-in)"""
+        return computation()
+
+# Custom logger setup
+class CustomFormatter(logging.Formatter):
+    grey = "\x1b[38;20m"
+    yellow = "\x1b[33;20m"
+    red = "\x1b[31;20m"
+    bold_red = "\x1b[31;1m"
+    reset = "\x1b[0m"
+    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+
+    FORMATS = {
+        logging.DEBUG: grey + format + reset,
+        logging.INFO: grey + format + reset,
+        logging.WARNING: yellow + format + reset,
+        logging.ERROR: red + format + reset,
+        logging.CRITICAL: bold_red + format + reset
+    }
+
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+
+def setup_logger(name):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(CustomFormatter())
+    logger.addHandler(ch)
+    return logger
+
+Logger = setup_logger(__name__)
+
+# Improved Enum for DataType
+class DataType(Enum):
+    INTEGER = auto()
+    FLOAT = auto()
+    STRING = auto()
+    BOOLEAN = auto()
+    NONE = auto()
+    LIST = auto()
+    TUPLE = auto()
+    DICT = auto()
+
+# Improved logging and benchmarking decorators
+def log(level=logging.INFO):
+    def decorator(func):
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            Logger.log(level, f"Executing {func.__name__} with args: {args}, kwargs: {kwargs}")
+            try:
+                result = await func(*args, **kwargs)
+                Logger.log(level, f"Completed {func.__name__} with result: {result}")
+                return result
+            except Exception as e:
+                Logger.exception(f"Error in {func.__name__}: {str(e)}")
+                raise
+
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            Logger.log(level, f"Executing {func.__name__} with args: {args}, kwargs: {kwargs}")
+            try:
+                result = func(*args, **kwargs)
+                Logger.log(level, f"Completed {func.__name__} with result: {result}")
+                return result
+            except Exception as e:
+                Logger.exception(f"Error in {func.__name__}: {str(e)}")
+                raise
+
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+    return decorator
+
+def bench(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        if not getattr(sys, 'bench', True):
+            return await func(*args, **kwargs)
+        start_time = time.perf_counter()
+        try:
+            result = await func(*args, **kwargs)
+            end_time = time.perf_counter()
+            Logger.info(f"{func.__name__} executed in {end_time - start_time:.4f} seconds")
+            return result
+        except Exception as e:
+            Logger.exception(f"Error in {func.__name__}: {str(e)}")
+            raise
+    return wrapper
+
+class BaseModel:
+    __slots__ = ('__dict__', '__weakref__')
+
+    def __setattr__(self, name, value):
+        if name in self.__annotations__:
+            expected_type = self.__annotations__[name]
+            # Handle generic types and Any
+            if hasattr(expected_type, '__origin__'):
+                # Skip validation for generic types
+                pass
+            elif expected_type != Any:
+                if not isinstance(value, expected_type):
+                    raise TypeError(f"Expected {expected_type} for {name}, got {type(value)}")
+            validator = getattr(self.__class__, f'validate_{name}', None)
+            if validator:
+                validator(self, value)
+        super().__setattr__(name, value)
+
+    @classmethod
+    def create(cls, **kwargs):
+        return cls(**kwargs)
+
+    def dict(self):
+        return {name: getattr(self, name) for name in self.__annotations__}
+
+    def json(self):
+        return json.dumps(self.dict())
+
+    @classmethod
+    def from_json(cls, json_str):
+        return cls(**json.loads(json_str))
+
+    def __repr__(self):
+        attrs = ', '.join(f"{name}={getattr(self, name)!r}" for name in self.__annotations__)
+        return f"{self.__class__.__name__}({attrs})"
+
+    def __str__(self):
+        attrs = ', '.join(f"{name}={getattr(self, name)}" for name in self.__annotations__)
+        return f"{self.__class__.__name__}({attrs})"
+    
+    def clone(self):
+        return self.__class__(**self.dict())
+
+# Decorators
+def frozen(cls):
+    original_setattr = cls.__setattr__
+
+    def __setattr__(self, name, value):
+        if hasattr(self, name):
+            raise AttributeError(f"Cannot modify frozen attribute '{name}'")
+        original_setattr(self, name, value)
+    
+    cls.__setattr__ = __setattr__
+    return cls
+
+def validate(validator: Callable[[Any], None]):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, value):
+            validator(value)
+            return func(self, value)
+        return wrapper
+    return decorator
+
+# Improved File Model
+class FileModel(BaseModel):
+    file_name: str
+    file_content: str
+    
+    @log()
+    def save(self, directory: pathlib.Path):
+        try:
+            with (directory / self.file_name).open('w') as file:
+                file.write(self.file_content)
+            Logger.info(f"Saved file: {self.file_name}")
+        except IOError as e:
+            Logger.error(f"Failed to save file {self.file_name}: {str(e)}")
+            raise
+
+# Improved Module Model
+@frozen
+class Module(BaseModel):
+    file_path: pathlib.Path
+    module_name: str
+
+    @validate(lambda x: x.suffix == '.py')
+    def validate_file_path(self, value):
+        return value
+
+    @validate(lambda x: x.isidentifier())
+    def validate_module_name(self, value):
+        return value
+
+    def __init__(self, file_path: pathlib.Path, module_name: str):
+        super().__init__(file_path=file_path, module_name=module_name)
+
+@log()
+def create_model_from_file(file_path: pathlib.Path):
     try:
-        result = subprocess.run(command, check=check, shell=shell, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        print(result.stdout.decode())
-    except subprocess.CalledProcessError as e:
-        print(f"Command '{command}' failed with error:\n{e.stderr.decode()}")
-        if check:
-            sys.exit(e.returncode)
+        with file_path.open('r', encoding='utf-8', errors='ignore') as file:
+            content = file.read()
 
-def ensure_delete(path):
-    """Ensure that a file or directory can be deleted"""
-    try:
-        os.chmod(path, 0o777)
-        if os.path.isfile(path) or os.path.islink(path):
-            os.remove(path)
-        elif os.path.isdir(path):
-            shutil.rmtree(path)
+        model_name = file_path.stem.capitalize() + 'Model'
+        # Create a proper class with BaseModel inheritance
+        model_dict = {
+            'file_name': str,
+            'file_content': str,
+            '__annotations__': {'file_name': str, 'file_content': str}
+        }
+        model_class = type(model_name, (FileModel,), model_dict)
+        instance = model_class(file_name=file_path.name, file_content=content)
+        Logger.info(f"Created {model_name} from {file_path}")
+        return model_name, instance
     except Exception as e:
-        print(f"Failed to delete {path}. Reason: {e}")
+        Logger.error(f"Failed to create model from {file_path}: {e}")
+        return None, None
 
-def ensure_path():
-    """Ensure that the PATH is set correctly"""
-    path = os.getenv('PATH')
-    if 'desired_path_entry' not in path:
-        os.environ['PATH'] = f'/desired_path_entry:{path}'
-        print('Updated PATH environment variable.')
+@log()
+def load_files_as_models(root_dir: pathlib.Path, file_extensions: List[str]) -> Dict[str, BaseModel]:
+    models = {}
+    for file_path in root_dir.rglob('*'):
+        if file_path.is_file() and file_path.suffix in file_extensions:
+            model_name, instance = create_model_from_file(file_path)
+            if model_name and instance:
+                models[model_name] = instance
+                sys.modules[model_name] = instance
+    return models
 
+@log()
+def register_models(models: Dict[str, BaseModel]):
+    for model_name, instance in models.items():
+        globals()[model_name] = instance
+        Logger.info(f"Registered {model_name} in the global namespace")
 
-state = {
-    "pipx_installed": False,
-    "pdm_installed": False,
-    "virtualenv_created": False,
-    "dependencies_installed": False,
-    "lint_passed": False,
-    "code_formatted": False,
-    "tests_passed": False,
-    "benchmarks_run": False,
-    "pre_commit_installed": False,
+@log()
+def runtime(root_dir: pathlib.Path):
+    file_models = load_files_as_models(root_dir, ['.md', '.txt', '.py'])
+    register_models(file_models)
+
+TypeMap = {
+    int: DataType.INTEGER,
+    float: DataType.FLOAT,
+    str: DataType.STRING,
+    bool: DataType.BOOLEAN,
+    type(None): DataType.NONE,
+    list: DataType.LIST,
+    tuple: DataType.TUPLE,
+    dict: DataType.DICT
 }
 
-def update_path():
-    home = os.path.expanduser("~")
-    local_bin = os.path.join(home, ".local", "bin")
-    if local_bin not in os.environ["PATH"]:
-        os.environ["PATH"] = f"{local_bin}:{os.environ['PATH']}"
-        print(f"Added {local_bin} to PATH")
-    # Call this after installations
+def get_type(value: Any) -> Optional[DataType]:
+    return TypeMap.get(type(value))
 
-def ensure_pipx():
-    """Ensure pipx is installed"""
-    global state
-    try:
-        subprocess.run("pipx --version", shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        state['pipx_installed'] = True
-        print("pipx is already installed.")
-    except subprocess.CalledProcessError:
-        print("pipx not found, installing pipx...")
-        run_command("pip install pipx", shell=True)
-        run_command("pipx ensurepath", shell=True)
-        state['pipx_installed'] = True
+def validate_datum(value: Any) -> bool:
+    return get_type(value) is not None
 
-def ensure_pdm():
-    """Ensure pdm is installed via pipx"""
-    global state
-    try:
-        output = subprocess.run("pipx list", shell=True, check=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        if b'pdm' not in output.stdout:
-            raise KeyError('pdm not found in pipx list')
-        print("pdm is already installed.")
-        state['pdm_installed'] = True
-    except (subprocess.CalledProcessError, KeyError):
-        print("pdm not found, installing pdm...")
-        run_command("pipx install pdm", shell=True)
-        state['pdm_installed'] = True
+def process_datum(value: Any) -> str:
+    dtype = get_type(value)
+    return f"Processed {dtype.name}: {value}" if dtype else "Unknown data type"
 
+def safe_process_input(value: Any) -> str:
+    return "Invalid input type" if not validate_datum(value) else process_datum(value)
 
-def prompt_for_mode():
-    """Prompt the user to choose between development and non-development setup"""
-    while True:
-        choice = input("Choose setup mode: [d]evelopment or [n]on-development? ").lower()
-        if choice in ['d', 'n']:
-            return choice
-        print("Invalid choice, please enter 'd' or 'n'.")
+@dataclass
+class Atom(BaseModel):
+    id: str
+    value: Any
+    data_type: str = field(init=False)
+    attributes: Dict[str, Any] = field(default_factory=dict)
+    subscribers: Set['Atom'] = field(default_factory=set)
+    MAX_INT_BIT_LENGTH: ClassVar[int] = 1024
 
+    def __post_init__(self):
+        self.data_type = self.infer_data_type(self.value)
+        Logger.debug(f"Initialized Atom with value: {self.value} and inferred type: {self.data_type}")
 
-def install(mode):
-    """Run installation"""
-    if mode == 'dev':
-        run_command("pdm install", shell=True, verbose=True)
-    else:
-        run_command("pipx install . --force", shell=True, verbose=True)
+    async def execute(self, *args, **kwargs) -> Any:
+        Logger.debug(f"Atom {self.id} executing with value: {self.value}")
+        return self.value
 
+    def infer_data_type(self, value: Any) -> str:
+        type_map = {
+            str: 'string',
+            int: 'integer',
+            float: 'float',
+            bool: 'boolean',
+            list: 'list',
+            dict: 'dictionary',
+            type(None): 'none'
+        }
+        inferred_type = type_map.get(type(value), 'unsupported')
+        Logger.debug(f"Inferred data type: {inferred_type}")
+        return inferred_type
 
-def lint():
-    """Run linting tools"""
-    global state
-    run_command("pdm run flake8 .", shell=True)
-    run_command("pdm run black --check .", shell=True)
-    run_command("pdm run mypy .", shell=True)
-    state['lint_passed'] = True
+    @abstractmethod
+    def encode(self) -> bytes:
+        pass
 
-def format_code():
-    """Format the code"""
-    global state
-    run_command("pdm run black .", shell=True)
-    run_command("pdm run isort .", shell=True)
-    state['code_formatted'] = True
+    def validate(self) -> bool:
+        return True
 
-def test():
-    """Run tests"""
-    global state
-    run_command("pdm run pytest", shell=True)
-    state['tests_passed'] = True
+    def __getitem__(self, key: str) -> Any:
+        return self.attributes[key]
 
-def bench():
-    """Run benchmarks"""
-    global state
-    run_command("pdm run python src/bench/bench.py", shell=True)
-    state['benchmarks_run'] = True
+    def __setitem__(self, key: str, value: Any) -> None:
+        self.attributes[key] = value
 
-def pre_commit_install():
-    """Install pre-commit hooks"""
-    global state
-    run_command("pdm run pre-commit install", shell=True)
-    state['pre_commit_installed'] = True
+    def __delitem__(self, key: str) -> None:
+        del self.attributes[key]
 
+    def __contains__(self, key: str) -> bool:
+        return key in self.attributes
 
-def introspect():
-    """Introspect the current state and print results"""
-    print("Introspection results:")
-    for key, value in state.items():
-        print(f"{key}: {'✅' if value else '❌'}")
+    @log()
+    async def send_message(self, message: Any, ttl: int = 3) -> None:
+        if ttl <= 0:
+            Logger.info(f"Message {message} dropped due to TTL")
+            return
+        Logger.info(f"Atom {self.id} received message: {message}")
+        for sub in self.subscribers:
+            await sub.receive_message(message, ttl - 1)
 
+    @log()
+    async def receive_message(self, message: Any, ttl: int) -> None:
+        Logger.info(f"Atom {self.id} processing received message: {message} with TTL {ttl}")
+        await self.send_message(message, ttl)
 
-def update_shell_environment():
-    if platform.system() != "Windows":
-        home = os.path.expanduser("~")
-        bashrc_path = os.path.join(home, ".bashrc")
-        if os.path.exists(bashrc_path):
-            subprocess.run(f"source {bashrc_path}", shell=True, executable="/bin/bash")
-            print("Updated shell environment from .bashrc")
+    def subscribe(self, atom: 'Atom') -> None:
+        self.subscribers.add(atom)
+        Logger.info(f"Atom {self.id} subscribed to {atom.id}")
+
+    def unsubscribe(self, atom: 'Atom') -> None:
+        self.subscribers.discard(atom)
+        Logger.info(f"Atom {self.id} unsubscribed from {atom.id}")
+
+class AntiAtom(Atom):
+    def __init__(self, atom: Atom):
+        super().__init__(id=f"anti_{atom.id}", value=None, attributes=atom.attributes)
+        self.original_atom = atom
+
+    def encode(self) -> bytes:
+        return b'anti_' + self.original_atom.encode()
+
+    async def execute(self, *args, **kwargs) -> Any:
+        # Properly await the original atom's execute method
+        result = await self.original_atom.execute(*args, **kwargs)
+        return not result
+
+@dataclass
+class AtomicTheory:
+    base_atom: Atom
+    elements: List[Atom]
+    theory_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    operations: Dict[str, Callable[..., Any]] = field(default_factory=lambda: {
+        '⊤': lambda x: True,
+        '⊥': lambda x: False,
+        '¬': lambda x: not x,
+        '∧': lambda a, b: a and b,
+        '∨': lambda a, b: a or b,
+        '→': lambda a, b: (not a) or b,
+        '↔': lambda a, b: (a and b) or (not a and not b)
+    })
+    anti_theory: 'AntiAtom' = field(init=False)
+
+    def __repr__(self) -> str:
+        return f"AtomicTheory(theory_id={self.theory_id}, elements={self.elements!r}, operations={list(self.operations.keys())})"
+
+    async def execute(self, operation: str, *args, **kwargs) -> Any:
+        Logger.debug(f"Executing AtomicTheory {self.theory_id} operation: {operation} with args: {args}")
+        if operation in self.operations:
+            result = self.operations[operation](*args)
+            Logger.debug(f"Operation result: {result}")
+            return result
         else:
-            print(".bashrc not found, shell environment might not be up to date")
-    else:
-        print("On Windows, manual PATH update might be necessary")
-    # Call this function after ensure_pipx() and ensure_pdm()
+            raise ValueError(f"Operation {operation} not supported in AtomicTheory.")
+
+    def __post_init__(self):
+        self.anti_theory = AntiAtom(self.base_atom)
+        Logger.debug(f"Initialized AtomicTheory with elements: {self.elements}")
+
+    def __repr__(self) -> str:
+        return f"AtomicTheory(theory_id={self.theory_id}, elements={self.elements!r}, operations={list(self.operations.keys())})"
+
+    def add_operation(self, name: str, operation: Callable[..., Any]) -> None:
+        Logger.debug(f"Adding operation '{name}' to AtomicTheory")
+        self.operations[name] = operation
+
+    def encode(self) -> bytes:
+        Logger.debug("Encoding AtomicTheory")
+        encoded_elements = b''.join([element.encode() for element in self.elements])
+        return struct.pack(f'{len(encoded_elements)}s', encoded_elements)
+
+    def decode(self, data: bytes) -> None:
+        Logger.debug("Decoding AtomicTheory from bytes")
+        # Splitting data for elements is dependent on specific encoding scheme, here simplified
+        num_elements = struct.unpack('i', data[:4])[0]
+        element_size = len(data[4:]) // num_elements
+        segments = [data[4+element_size*i:4+element_size*(i+1)] for i in range(num_elements)]
+        for element, segment in zip(self.elements, segments):
+            element.decode(segment)
+        Logger.debug(f"Decoded AtomicTheory elements: {self.elements}")
 
 
+@dataclass
+class TaskAtom(Atom):  # Tasks are atoms that represent asynchronous potential actions
+    task_id: int
+    atom: Atom
+    args: tuple = field(default_factory=tuple)
+    kwargs: Dict[str, Any] = field(default_factory=dict)
+    result: Any = None
+
+    async def run(self) -> Any:
+        logging.info(f"Running task {self.task_id}")
+        try:
+            self.result = await self.atom.execute(*self.args, **self.kwargs)
+            logging.info(f"Task {self.task_id} completed with result: {self.result}")
+        except Exception as e:
+            logging.error(f"Task {self.task_id} failed with error: {e}")
+        return self.result
+
+    def encode(self) -> bytes:
+        return json.dumps(self.to_dict()).encode()
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'TaskAtom':
+        obj = json.loads(data.decode())
+        return cls.from_dict(obj)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'task_id': self.task_id,
+            'atom': self.atom.to_dict(),
+            'args': self.args,
+            'kwargs': self.kwargs,
+            'result': self.result
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'TaskAtom':
+        return cls(
+            task_id=data['task_id'],
+            atom=Atom.from_dict(data['atom']),
+            args=tuple(data['args']),
+            kwargs=data['kwargs'],
+            result=data['result']
+        )
+
+class ArenaAtom(Atom):  # Arenas are threaded virtual memory Atoms appropriately-scoped when invoked
+    def __init__(self, name: str):
+        super().__init__(id=name)
+        self.name = name
+        self.local_data: Dict[str, Any] = {}
+        self.task_queue: asyncio.Queue = asyncio.Queue()
+        self.executor = ThreadPoolExecutor()
+        self.running = False
+        self.lock = threading.Lock()
+    
+    async def allocate(self, key: str, value: Any) -> None:
+        with self.lock:
+            self.local_data[key] = value
+            logging.info(f"Arena {self.name}: Allocated {key} = {value}")
+    
+    async def deallocate(self, key: str) -> None:
+        with self.lock:
+            value = self.local_data.pop(key, None)
+            logging.info(f"Arena {self.name}: Deallocated {key}, value was {value}")
+    
+    def get(self, key: str) -> Any:
+        return self.local_data.get(key)
+    
+    def encode(self) -> bytes:
+        data = {
+            'name': self.name,
+            'local_data': {key: value.to_dict() if isinstance(value, Atom) else value 
+                           for key, value in self.local_data.items()}
+        }
+        return json.dumps(data).encode()
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ArenaAtom':
+        obj = json.loads(data.decode())
+        instance = cls(obj['name'])
+        instance.local_data = {key: Atom.from_dict(value) if isinstance(value, dict) else value 
+                               for key, value in obj['local_data'].items()}
+        return instance
+    
+    async def submit_task(self, atom: Atom, args=(), kwargs=None) -> int:
+        task_id = uuid.uuid4().int
+        task = TaskAtom(task_id, atom, args, kwargs or {})
+        await self.task_queue.put(task)
+        logging.info(f"Submitted task {task_id}")
+        return task_id
+    
+    async def task_notification(self, task: TaskAtom) -> None:
+        notification_atom = AtomNotification(f"Task {task.task_id} completed")
+        await self.send_message(notification_atom)
+    
+    async def run(self) -> None:
+        self.running = True
+        asyncio.create_task(self._worker())
+        logging.info(f"Arena {self.name} is running")
+
+    async def stop(self) -> None:
+        self.running = False
+        self.executor.shutdown(wait=True)
+        logging.info(f"Arena {self.name} has stopped")
+    
+    async def _worker(self) -> None:
+        while self.running:
+            try:
+                task: TaskAtom = await asyncio.wait_for(self.task_queue.get(), timeout=1)
+                logging.info(f"Worker in {self.name} picked up task {task.task_id}")
+                await self.allocate(f"current_task_{task.task_id}", task)
+                await task.run()
+                await self.task_notification(task)
+                await self.deallocate(f"current_task_{task.task_id}")
+            except asyncio.TimeoutError:
+                continue
+            except Exception as e:
+                logging.error(f"Error in worker: {e}")
+
+@dataclass
+class AtomNotification(Atom):  # nominative async message passing interface
+    message: str
+
+    def encode(self) -> bytes:
+        return json.dumps({'message': self.message}).encode()
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'AtomNotification':
+        obj = json.loads(data.decode())
+        return cls(message=obj['message'])
+
+class EventBus(Atom):  # Pub/Sub homoiconic event bus
+    def __init__(self):
+        super().__init__(id="event_bus")
+        self._subscribers: Dict[str, List[Callable[[Atom], Coroutine[Any, Any, None]]]] = {}
+
+    async def subscribe(self, event_type: str, handler: Callable[[Atom], Coroutine[Any, Any, None]]) -> None:
+        if event_type not in self._subscribers:
+            self._subscribers[event_type] = []
+        self._subscribers[event_type].append(handler)
+
+    async def unsubscribe(self, event_type: str, handler: Callable[[Atom], Coroutine[Any, Any, None]]) -> None:
+        if event_type in self._subscribers:
+            self._subscribers[event_type].remove(handler)
+
+    async def publish(self, event_type: str, event_data: Any) -> None:
+        if event_type in self._subscribers:
+            for handler in self._subscribers[event_type]:
+                asyncio.create_task(handler(event_type, event_data))
+
+
+    def encode(self) -> bytes:
+        raise NotImplementedError("EventBus cannot be directly encoded")
+
+    @classmethod
+    def decode(cls, data: bytes) -> None:
+        raise NotImplementedError("EventBus cannot be directly decoded")
+
+@dataclass
+class EventAtom(Atom):  # Events are network-friendly Atoms, associates with a type and an id (USER-scoped), think; datagram
+    id: str
+    type: str
+    detail_type: Optional[str] = None
+    message: Union[str, List[Dict[str, Any]]] = field(default_factory=list)
+    source: Optional[str] = None
+    target: Optional[str] = None
+    content: Optional[str] = None
+    metadata: Optional[Dict[str, Any]] = field(default_factory=dict)
+
+    def encode(self) -> bytes:
+        return json.dumps(self.to_dict()).encode()
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'EventAtom':
+        obj = json.loads(data.decode())
+        return cls.from_dict(obj)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "id": self.id,
+            "type": self.type,
+            "detail_type": self.detail_type,
+            "message": self.message,
+            "source": self.source,
+            "target": self.target,
+            "content": self.content,
+            "metadata": self.metadata
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'EventAtom':
+        return cls(
+            id=data["id"],
+            type=data["type"],
+            detail_type=data.get("detail_type"),
+            message=data.get("message"),
+            source=data.get("source"),
+            target=data.get("target"),
+            content=data.get("content"),
+            metadata=data.get("metadata", {})
+        )
+
+    def validate(self) -> bool:
+        required_fields = ['id', 'type']
+        for field in required_fields:
+            if not getattr(self, field):
+                raise ValueError(f"Missing required field: {field}")
+        return True
+
+@dataclass
+class ActionRequestAtom(Atom):  # User-initiated action request
+    action: str
+    params: Dict[str, Any]
+    self_info: Dict[str, Any]
+    echo: Optional[str] = None
+
+    def encode(self) -> bytes:
+        return json.dumps(self.to_dict()).encode()
+
+    @classmethod
+    def decode(cls, data: bytes) -> 'ActionRequestAtom':
+        obj = json.loads(data.decode())
+        return cls.from_dict(obj)
+
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            "action": self.action,
+            "params": self.params,
+            "self_info": self.self_info,
+            "echo": self.echo
+        }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'ActionRequestAtom':
+        return cls(
+            action=data["action"],
+            params=data["params"],
+            self_info=data["self_info"],
+            echo=data.get("echo")
+        )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# Main application logic
+async def run_atomic_theory_demo():
+    base_atom = Atom(id="theory_base", value=None)
+    theory = AtomicTheory(
+        base_atom=base_atom,
+        elements=[
+            Atom(id="a", value=True),
+            Atom(id="b", value=False)
+        ],
+        theory_id="demo_theory"  # Using theory_id here
+    )
+    print(theory)
+    print(theory.anti_theory)
+
+    result = await theory.execute('∧', theory.elements[0].value, theory.elements[1].value)
+    print(f"Result of A ∧ B: {result}")
+
+    result = await theory.anti_theory.execute('∧', theory.elements[0].value, theory.elements[1].value)
+    print(f"Result of ¬(A ∧ B): {result}")
+
+@log()
 def main():
-    ensure_pipx()
-    ensure_pdm()
-    update_shell_environment()
-    update_path()
+    root_dir = pathlib.Path("./")  # Adjust this path as needed
+    file_models = load_files_as_models(root_dir, ['.md', '.txt']) # ['.md', '.txt', '.py']
+    register_models(file_models)
+    runtime(root_dir)
 
-    parser = argparse.ArgumentParser(description="Setup and run Abraxus project")
-    parser.add_argument('-m', '--mode', choices=['dev', 'non-dev'], help="Setup mode: 'dev' or 'non-dev'")
-    parser.add_argument('--run-user-main', action='store_true', help="Run the user-defined main function")
-    args = parser.parse_args()
-    mode = args.mode
-    if not mode:
-        choice = prompt_for_mode()
-        mode = 'dev' if choice == 'd' else 'non-dev'
-    if mode == 'dev':
-        install(mode)
-        lint()
-        format_code()
-        test()
-        bench()
-        pre_commit_install()
-    else:
-        install(mode)
-        # Use pipx run instead of pdm run for non-dev mode
-        run_command("pipx run main", shell=True)
-
-    if args.run_user_main:
-        from src.main import usermain
-        usermain()  # Call the user-defined main function
-    else:
-        print("No additional arguments provided. Skipping user-defined main function.")
-
-    introspect()
+    asyncio.run(run_atomic_theory_demo())
 
 if __name__ == "__main__":
     main()
-    # use ./src/utils/cleanup.py to clean up the environment (optional: clean up pipx and pdm and conda)
+    # Potential user interaction
+    atom = Atom(id="user_input", value=None)
+    transformed = HoloiconicTransform.flip(atom.value)
+    original = HoloiconicTransform.flop(transformed)
+    assert original == atom.value
+
+    # Quick start
+    from app.mro import LogicalMROExample, set_process_priority
+
+    # Set process to low priority
+    set_process_priority(0)
+
+    # Analyze class structures
+    analyzer = LogicalMROExample()
+    result = analyzer.analyze_classes()
+    print(result['s_expressions'])

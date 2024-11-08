@@ -13,13 +13,13 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "kb/assets/MSC convenes with KEK.md",
+                "file": "kb/assets/execv.md",
                 "mode": "source",
                 "backlinks": true,
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "MSC convenes with KEK"
+              "title": "execv"
             }
           }
         ]
@@ -181,20 +181,23 @@
   },
   "active": "d11d8979e97a677f",
   "lastOpenFiles": [
+    "app/__pycache__/mro.cpython-313.pyc",
+    "app/__pycache__/__init__.cpython-313.pyc",
+    "app/__pycache__",
+    "app/mro.py",
+    "BotSpec.md",
+    "app/atom.py",
+    "2024-11-08.md",
+    "kb/assets/execv.md",
+    "kb/assets/Nov0824conversation.md",
+    "kb/assets/MSC convenes with KEK.md",
     "app/src/utils/cleanup.py",
     "app/src/typeclass/tc.py",
     "app/src/typeclass/protoc.py",
     "app/src/typeclass/hg.py",
     "app/src/bench/__init__.py",
     "app/src/bench/bench.py",
-    "app/src/app/__init__.py",
-    "app/src/app/virtualmodel.py",
-    "app/src/app/base.py",
-    "app/src/app/app.py",
-    "app/src/__init__.py",
     "app/src/README.md",
-    "README.md",
-    "BotSpec.md",
-    "2024-11-08.md"
+    "README.md"
   ]
 }
