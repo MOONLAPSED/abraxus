@@ -1,3 +1,18 @@
+#### public ####
+
+!/kb/assets/pub/*
+
+#### private ####
+
+/kb/*
+/kb/assets/*
+
+# User-defined rules below
+/.scratch/*
+*.scratch
+node_modules/
+*.log
+
 # Ignore system and user-specific files
 .bash_history
 .bash_logout

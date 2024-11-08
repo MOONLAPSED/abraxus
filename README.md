@@ -1,3 +1,5 @@
+![welcome](/kb/assets/pub/image.jpg)
+
 # Abraxus
 
 ## Usage; testing, fuzzing, linting, etc.

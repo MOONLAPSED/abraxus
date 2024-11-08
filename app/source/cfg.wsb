@@ -1,0 +1,22 @@
+<!-- This file contains the configuration for a Windows Sandbox -->
+
+<Configuration>
+    <vGPU>Enable</vGPU>
+    <Networking>Default</Networking>
+    <AudioInput>Enable</AudioInput>
+    <VideoInput>Disable</VideoInput>
+    <PrinterRedirection>Disable</PrinterRedirection>
+    <ClipboardRedirection>Default</ClipboardRedirection>
+    <ProtectedClient>Disable</ProtectedClient>
+    <MemoryInMB>8192</MemoryInMB>
+    <MappedFolders>
+        <MappedFolder>
+            <HostFolder>C:\Users\DEV\Documents\abraxus</HostFolder>
+            <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop</SandboxFolder>
+            <ReadOnly>false</ReadOnly>
+        </MappedFolder>
+    </MappedFolders>
+    <LogonCommand>
+        <Command>powershell.exe -ExecutionPolicy Bypass -Command "Invoke-Expression (New-Object System.Net.WebClient).DownloadString('https://get.scoop.sh')"</Command>
+    </LogonCommand>
+</Configuration>
