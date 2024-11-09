@@ -69,6 +69,9 @@ Every CCC db is itself a type of training and context but built specifically for
 
 
 
+## Best practices:
+- Utilize camelCase for internal source code
+- Utilize CAPS_CASE for ffi funcs and external source
 
 
 """

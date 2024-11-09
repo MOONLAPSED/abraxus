@@ -36,6 +36,26 @@ T = TypeVar('T')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger('ObsidianSandbox')
 
+IS_POSIX = os.name == 'posix'
+IS_WINDOWS = sys.platform.startswith('win')
+
+# Platform-specific optimizations
+if IS_WINDOWS:
+    from ctypes import windll
+    from ctypes import wintypes
+    from ctypes.wintypes import HANDLE, DWORD, LPWSTR, LPVOID, BOOL
+    def set_process_priority(priority: int):
+        windll.kernel32.SetPriorityClass(wintypes.HANDLE(-1), priority)
+
+elif IS_POSIX:
+    import resource
+
+    def set_process_priority(priority: int):
+        try:
+            os.nice(priority)
+        except PermissionError:
+            print("Warning: Unable to set process priority. Running with default priority.")
+
 WINDOWS_SANDBOX_DEFAULT_DESKTOP = Path(PureWindowsPath(r'C:\Users\WDAGUtilityAccount\Desktop'))
 
 @dataclass

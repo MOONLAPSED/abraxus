@@ -7,9 +7,9 @@ import os
 import pathlib
 import struct
 import sys
+import pickle
 import threading
 import time
-import copy
 import traceback
 import uuid
 from abc import ABC, abstractmethod
@@ -23,7 +23,11 @@ from typing import (
     Any, Dict, Optional, Union, Callable, TypeVar, Protocol, 
     runtime_checkable, List, Generic, Set, Coroutine, Type, ClassVar
 )
-
+"""py objects are implemented as C structures.
+typedef struct _object {
+    Py_ssize_t ob_refcnt;
+    PyTypeObject *ob_type;
+} PyObject; """
 # Everything in Python is an object, and every object has a type. The type of an object is a class. Even the
 # type class itself is an instance of type. Functions defined within a class become method objects when
 # accessed through an instance of the class
@@ -62,14 +66,6 @@ T = TypeVar('T', bound=any) # T for TypeVar, V for ValueVar. Homoicons are T+V.
 V = TypeVar('V', bound=Union[int, float, str, bool, list, dict, tuple, set, object, Callable, type])
 C = TypeVar('C', bound=Callable[..., Any])  # callable 'T'/'V' first class function interface
 DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE') # 'T' vars (stdlib)
-"""The type system forms the "boundary" theory
-The runtime forms the "bulk" theory
-The homoiconic property ensures they encode the same information
-The holoiconic property enables:
-    States as quantum superpositions
-    Computations as measurements
-    Types as boundary conditions
-    Runtime as bulk geometry"""
 
 @runtime_checkable
 class Atom(Protocol):
@@ -79,7 +75,30 @@ class Atom(Protocol):
     """
     id: str
 
+def atom(cls: Type[{T, V, C}]) -> Type[{T, V, C}]: # homoicon decorator
+    """Decorator to create a homoiconic atom."""
+    original_init = cls.__init__
+    def new_init(self, *args, **kwargs):
+        original_init(self, *args, **kwargs)
+        if not hasattr(self, 'id'):
+            self.id = hashlib.sha256(self.__class__.__name__.encode('utf-8')).hexdigest()
+
+    cls.__init__ = new_init
+    return cls
+
 AtomType = TypeVar('AtomType', bound=Atom)
+QuantumAtomState = Enum('QuantumAtomState', ['SUPERPOSITION', 'ENTANGLED', 'COLLAPSED', 'DECOHERENT'])
+"""The type system forms the "boundary" theory
+The runtime forms the "bulk" theory
+The homoiconic property ensures they encode the same information
+The holoiconic property enables:
+    States as quantum superpositions
+    Computations as measurements
+    Types as boundary conditions
+    Runtime as bulk geometry"""
+
+
+
 
 @dataclass
 class ErrorAtom(Atom):
@@ -203,7 +222,7 @@ global_error_handler = ErrorHandler()
 def handle_errors(func):
     return global_error_handler.decorator(func)
 
-EventBus = EventBus('AppBus')
+EventBus = EventBus('EventBus')
 
 class HoloiconicTransform(Generic[T, V, C]):
     @staticmethod
@@ -335,7 +354,6 @@ class BaseModel:
     def clone(self):
         return self.__class__(**self.dict())
 
-# Decorators
 def frozen(cls):
     original_setattr = cls.__setattr__
 
@@ -356,7 +374,6 @@ def validate(validator: Callable[[Any], None]):
         return wrapper
     return decorator
 
-# Improved File Model
 class FileModel(BaseModel):
     file_name: str
     file_content: str
@@ -371,7 +388,6 @@ class FileModel(BaseModel):
             Logger.error(f"Failed to save file {self.file_name}: {str(e)}")
             raise
 
-# Improved Module Model
 @frozen
 class Module(BaseModel):
     file_path: pathlib.Path
@@ -445,11 +461,9 @@ TypeMap = {
 def get_type(value: Any) -> Optional[DataType]:
     return TypeMap.get(type(value))
 
-@log()
 def validate_datum(value: Any) -> bool:
     return get_type(value) is not None
 
-@log()
 def process_datum(value: Any) -> str:
     dtype = get_type(value)
     return f"Processed {dtype.name}: {value}" if dtype else "Unknown data type"
@@ -457,16 +471,27 @@ def process_datum(value: Any) -> str:
 def safe_process_input(value: Any) -> str:
     return "Invalid input type" if not validate_datum(value) else process_datum(value)
 
+def encode(atom: 'Atom') -> bytes:
+    data = {
+        'tag': atom.tag,
+        'value': atom.value,
+        'children': [encode(child) for child in atom.children],
+        'metadata': atom.metadata
+    }
+    return pickle.dumps(data)
+
+def decode(data: bytes) -> 'Atom':
+    data = pickle.loads(data)
+    atom = Atom(data['tag'], data['value'], [decode(child) for child in data['children']], data['metadata'])
+    return atom
+
 @dataclass
 class Atom(BaseModel):
     id: str
-    aid: int
     value: Any
     data_type: str = field(init=False)
     attributes: Dict[str, Any] = field(default_factory=dict)
     subscribers: Set['Atom'] = field(default_factory=set)
-    state: dict = field(default_factory=dict)
-    history: list = field(default_factory=list)
     MAX_INT_BIT_LENGTH: ClassVar[int] = 1024
 
     def __post_init__(self):
@@ -490,27 +515,6 @@ class Atom(BaseModel):
         inferred_type = type_map.get(type(value), 'unsupported')
         Logger.debug(f"Inferred data type: {inferred_type}")
         return inferred_type
-
-
-    async def yield_state(self):
-        """Simulate yielding state and suspending execution."""
-        print(f"Atom {self.id} suspending with state: {self.state}")
-        yield self.state  # Pause execution and save state
-
-    async def activate(self):
-        """Reinvokes the atom and restores its state."""
-        await asyncio.sleep(0)  # Simulate async behavior
-        print(f"Activating Atom {self.id} with restored state: {self.state}")
-
-    def quine(self):
-        """Replicates the atom while preserving state."""
-        new_atom = copy.deepcopy(self)
-        new_atom.id = self.generate_new_id()
-        return new_atom
-
-    def generate_new_id(self):
-        """Generate a new unique ID for the Atom."""
-        return self.aid + 1
 
     @abstractmethod
     def encode(self) -> bytes:
