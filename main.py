@@ -23,6 +23,49 @@ from typing import (
     Any, Dict, Optional, Union, Callable, TypeVar, Protocol, 
     runtime_checkable, List, Generic, Set, Coroutine, Type, ClassVar
 )
+# Import the middleware model
+from app.middleware import AbstractDataModel, FrameModel, ConcreteSerialModel, Element
+
+@dataclass
+class Atom(AbstractDataModel):
+    """Monolithic Atom class that integrates with the middleware model."""
+    name: str
+    value: Any
+    elements: List[Element] = field(default_factory=list)
+    serializer: ConcreteSerialModel = None  # Optional serializer
+
+    def to_bytes(self) -> bytes:
+        """Return the Atom's data as bytes."""
+        return self.json().encode()
+
+    def to_pipe(self, pipe_name) -> None:
+        """Write the Atom's data to a named pipe."""
+        # write_to_pipe(pipe_name, self.json())
+        pass
+
+    def to_str(self) -> str:
+        """Return the Atom's data as a string representation."""
+        return self.json()
+
+    def dict(self) -> dict:
+        """Return a dictionary representation of the Atom."""
+        return {
+            "name": self.name,
+            "value": self.value,
+            "elements": [element.dict() for element in self.elements],
+        }
+
+    def json(self) -> str:
+        """Return a JSON representation of the Atom."""
+        return json.dumps(self.dict())
+
+    def serialize(self):
+        """Serialize the Atom using its serializer, if provided."""
+        if self.serializer:
+            return self.serializer.to_json()
+        else:
+            return self.json()
+
 """py objects are implemented as C structures.
 typedef struct _object {
     Py_ssize_t ob_refcnt;
@@ -65,7 +108,7 @@ What's conserved across these transformations:
 T = TypeVar('T', bound=any) # T for TypeVar, V for ValueVar. Homoicons are T+V.
 V = TypeVar('V', bound=Union[int, float, str, bool, list, dict, tuple, set, object, Callable, type])
 C = TypeVar('C', bound=Callable[..., Any])  # callable 'T'/'V' first class function interface
-DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE') # 'T' vars (stdlib)
+DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE DICT') # 'T' vars (stdlib)
 
 @runtime_checkable
 class Atom(Protocol):
@@ -624,14 +667,18 @@ class AtomicTheory:
             element.decode(segment)
         Logger.debug(f"Decoded AtomicTheory elements: {self.elements}")
 
-
 @dataclass
-class TaskAtom(Atom):  # Tasks are atoms that represent asynchronous potential actions
+class TaskAtom(Atom): # Tasks are atoms that represent asynchronous potential actions
     task_id: int
     atom: Atom
     args: tuple = field(default_factory=tuple)
     kwargs: Dict[str, Any] = field(default_factory=dict)
     result: Any = None
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))  # Base class field
+    value: Any = None  # Base class field
+    data_type: str = field(init=False)  # Base class field
+    attributes: Dict[str, Any] = field(default_factory=dict)  # Base class field
+    subscribers: Set['Atom'] = field(default_factory=set)  # Base class field
 
     async def run(self) -> Any:
         logging.info(f"Running task {self.task_id}")
