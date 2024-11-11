@@ -758,8 +758,6 @@ if __name__ == "__main__":
         logger.info("Main function completed successfully.")
     except Exception as e:
         logger.exception(f"Unhandled exception: {e}")
-
-# ====ABSTRACT_CLASSES============================
 @dataclass
 class GrammarRule:
     """
@@ -793,7 +791,6 @@ class Atom(Generic[T, V, C]):
         grammar_rules (List[GrammarRule]): List of grammar rules defining the syntax of the Atom.
     """
     __slots__ = ('_id', '_value', '_type', '_metadata', '_children', '_parent', 'hash', 'tag', 'children', 'metadata')
-    
     type: Union[str, str]
     value: Union[T, V, C] = field(default=None)
     grammar_rules: List[GrammarRule] = field(default_factory=list)
@@ -829,70 +826,52 @@ class Atom(Generic[T, V, C]):
     symmetry: Callable[[T, T], bool] = lambda x, y: x == y
     transitivity: Callable[[T, T, T], bool] = lambda x, y, z: (x == y and y == z)
     transparency: Callable[[Callable[..., T], T, T], T] = lambda f, x, y: f(True, x, y) if x == y else None
-
     def encode(self) -> bytes:
         return json.dumps({
             'id': self.id,
             'attributes': self.attributes
         }).encode()
-
     @classmethod
     def decode(cls, data: bytes) -> 'Atom':
         decoded_data = json.loads(data.decode())
         return cls(id=decoded_data['id'], **decoded_data['attributes'])
-
     def introspect(self) -> str:
         """
         Reflect on its own code structure via AST.
         """
         source = inspect.getsource(self.__class__)
         return ast.dump(ast.parse(source))
-
     def __repr__(self):
         return f"{self.value} : {self.type}"
-
     def __str__(self):
         return str(self.value)
-
     def __eq__(self, other: Any) -> bool:
         return isinstance(other, Atom) and self.hash == other.hash
-
     def __hash__(self) -> int:
         return int(self.hash, 16)
-
     def __getitem__(self, key):
         return self.value[key]
-
     def __setitem__(self, key, value):
         self.value[key] = value
-
     def __delitem__(self, key):
         del self.value[key]
-
     def __len__(self):
         return len(self.value)
-
     def __iter__(self):
         return iter(self.value)
-
     def __contains__(self, item):
         return item in self.value
-
     def __call__(self, *args, **kwargs):
         return self.value(*args, **kwargs)
-
     def __bytes__(self) -> bytes:
         return bytes(self.value)
-
     @property
     def memory_view(self) -> memoryview:
         if isinstance(self.value, (bytes, bytearray)):
             return memoryview(self.value)
         raise TypeError("Unsupported type for memoryview")
-
     def __buffer__(self, flags: int) -> memoryview: # Buffer protocol
         return memoryview(self.value)
-    
     async def send_message(self, message: Any, ttl: int = 3) -> None:
         if ttl <= 0:
             logging.info(f"Message {message} dropped due to TTL")
@@ -900,19 +879,15 @@ class Atom(Generic[T, V, C]):
         logging.info(f"Atom {self.id} received message: {message}")
         for sub in self.subscribers:
             await sub.receive_message(message, ttl - 1)
-
     async def receive_message(self, message: Any, ttl: int) -> None:
         logging.info(f"Atom {self.id} processing received message: {message} with TTL {ttl}")
         await self.send_message(message, ttl)
-
     def subscribe(self, atom: 'Atom') -> None:
         self.subscribers.add(atom)
         logging.info(f"Atom {self.id} subscribed to {atom.id}")
-
     def unsubscribe(self, atom: 'Atom') -> None:
         self.subscribers.discard(atom)
         logging.info(f"Atom {self.id} unsubscribed from {atom.id}")
-
     __getitem__ = lambda self, key: self.value[key]
     __setitem__ = lambda self, key, value: setattr(self.value, key, value)
     __delitem__ = lambda self, key: delattr(self.value, key)
@@ -925,15 +900,14 @@ class Atom(Generic[T, V, C]):
     __mul__ = lambda self, other: self.value * other
     __truediv__ = lambda self, other: self.value / other
     __floordiv__ = lambda self, other: self.value // other
-
     @staticmethod
     def serialize_data(data: Any) -> bytes:
-        return msgpack.packb(data, use_bin_type=True)
-
+        # return msgpack.packb(data, use_bin_type=True)
+        pass
     @staticmethod
     def deserialize_data(data: bytes) -> Any:
-        return msgpack.unpackb(data, raw=False)
-
+        # return msgpack.unpackb(data, raw=False)
+        pass
 @atom
 class TokenSpace(Atom, ABC):
     """
@@ -1106,7 +1080,7 @@ class QuantumRuntime(QuantumAtom[Any, Any, Any]):
     def __init__(self, base_dir: Path):
         super().__init__(value=None, type_=AtomType.OBJECT)
         self.base_dir = Path(base_dir)
-        self.runtimes: Dict[str, QuantumRuntimeConfig] = {}
+        self.runtimes: Dict[str, QuantumRuntime] = {}
         self.logger = logging.getLogger(__name__)
         self._establish_coherence()
 
