@@ -11,15 +11,10 @@
             "id": "a56e2a4f749d02b1",
             "type": "leaf",
             "state": {
-              "type": "markdown",
-              "state": {
-                "file": "kb/assets/MSC convenes with KEK.md",
-                "mode": "source",
-                "backlinks": true,
-                "source": false
-              },
+              "type": "empty",
+              "state": {},
               "icon": "lucide-file",
-              "title": "MSC convenes with KEK"
+              "title": "New tab"
             }
           }
         ]
@@ -153,11 +148,9 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {
-                "file": "kb/assets/MSC convenes with KEK.md"
-              },
+              "state": {},
               "icon": "lucide-list",
-              "title": "Outline of MSC convenes with KEK"
+              "title": "Outline"
             }
           }
         ],
@@ -183,12 +176,20 @@
   },
   "active": "a56e2a4f749d02b1",
   "lastOpenFiles": [
-    "__pycache__/init__.cpython-313.pyc",
-    "__pycache__/contin.cpython-313.pyc",
-    "__pycache__",
-    "m1.py",
-    "master.py",
-    "app/qduce.py",
+    "app/subenforcer.py",
+    "working/subenforcer.py",
+    "app/memory_tracker.log",
+    "working/igottatest.py",
+    "working/ifthisrunsima.py",
+    "working/pew3.py",
+    "working/pew2.py",
+    "working",
+    "2024-11-12.md",
+    "2024-11-11.md",
+    "pew2.py",
+    "pew3.py",
+    "kb/assets/MSC convenes with KEK.md",
+    "effingnumpybro.py",
     "kb/assets/execv.md",
     "ontology_important_chat.md",
     "2024-11-10.md",
@@ -197,13 +198,7 @@
     "README.md",
     "BotSpec.md",
     "2024-11-08.md",
-    "init__.py",
-    "app/mid.py",
-    "app/src/app/modified_quine.py",
-    "app/toke.py",
-    "app/__pycache__/middleware.cpython-313.pyc",
     "kb/assets/Nov0824conversation.md",
-    "kb/assets/MSC convenes with KEK.md",
     "app/src/README.md"
   ]
 }

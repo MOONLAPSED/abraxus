@@ -45,6 +45,7 @@ class AtomType(Enum):
     CLASS = auto()
     MODULE = auto()  # python 'module' ie. packaging, eg: code as data runtime 'database'
 # Logger setup
+DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE')
 class CustomFormatter(logging.Formatter):
     FORMATS = {
         logging.DEBUG: "\x1b[38;20m%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)\x1b[0m",
@@ -72,11 +73,6 @@ def setup_logger(name: str, level: int = logging.INFO) -> logging.Logger:
 
 logger = setup_logger('root', logging.DEBUG)
 
-# Typing and Enums ----------------------------------------------------------
-DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE')
-AtomType = Enum('AtomType', 'FUNCTION CLASS MODULE OBJECT')
-
-# Abstract Base Classes
 class ISerializable(ABC):
     @abstractmethod
     def to_dict(self) -> Dict[str, Any]:
