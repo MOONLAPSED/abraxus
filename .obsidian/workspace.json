@@ -11,10 +11,15 @@
             "id": "a56e2a4f749d02b1",
             "type": "leaf",
             "state": {
-              "type": "empty",
-              "state": {},
+              "type": "markdown",
+              "state": {
+                "file": "2024-11-13.md",
+                "mode": "source",
+                "backlinks": true,
+                "source": false
+              },
               "icon": "lucide-file",
-              "title": "New tab"
+              "title": "2024-11-13"
             }
           }
         ]
@@ -148,9 +153,11 @@
             "type": "leaf",
             "state": {
               "type": "outline",
-              "state": {},
+              "state": {
+                "file": "2024-11-13.md"
+              },
               "icon": "lucide-list",
-              "title": "Outline"
+              "title": "Outline of 2024-11-13"
             }
           }
         ],
@@ -176,20 +183,20 @@
   },
   "active": "a56e2a4f749d02b1",
   "lastOpenFiles": [
-    "app/subenforcer.py",
-    "working/subenforcer.py",
-    "app/memory_tracker.log",
-    "working/igottatest.py",
-    "working/ifthisrunsima.py",
-    "working/pew3.py",
-    "working/pew2.py",
-    "working",
+    "2024-11-13.md",
+    "working/main.py",
+    "working/__init__.py",
+    "app/__pycache__/middleware.cpython-313.pyc",
+    "app/__pycache__",
+    "working/app.py",
+    "working/protoc.py",
+    "working/protoc_tc.py",
+    "working/protoc_hg.py",
+    "app/src/typeclass/protoc_hg.py",
+    "app/src/typeclass/protoc_tc.py",
     "2024-11-12.md",
     "2024-11-11.md",
-    "pew2.py",
-    "pew3.py",
     "kb/assets/MSC convenes with KEK.md",
-    "effingnumpybro.py",
     "kb/assets/execv.md",
     "ontology_important_chat.md",
     "2024-11-10.md",

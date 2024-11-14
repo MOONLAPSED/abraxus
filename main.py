@@ -968,7 +968,7 @@ if __name__ == "__main__":
     assert original == atom.value
 
     # Quick start
-    from app.mro import LogicalMROExample, set_process_priority
+    from working.mro import LogicalMROExample, set_process_priority
 
     # Set process to low priority
     set_process_priority(0)
