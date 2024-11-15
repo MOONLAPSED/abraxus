@@ -23,8 +23,51 @@ from typing import (
     Any, Dict, Optional, Union, Callable, TypeVar, Protocol, 
     runtime_checkable, List, Generic, Set, Coroutine, Type, ClassVar
 )
-# Import the middleware model
-from app.middleware import AbstractDataModel, FrameModel, ConcreteSerialModel, Element
+class FrameModel(ABC):
+    """A frame model is a data structure that contains the data of a frame aka a chunk of text contained by dilimiters.
+        Delimiters are defined as '---' and '\n' or its analogues (EOF) or <|in_end|> or "..." etc for the start and end of a frame respectively.)
+        the frame model is a data structure that is independent of the source of the data.
+        portability note: "dilimiters" are established by the type of encoding and the arbitrary writing-style of the source data. eg: ASCII
+    """
+    @abstractmethod
+    def to_bytes(self) -> bytes:
+        """Return the frame data as bytes."""
+        pass
+
+
+class AbstractDataModel(FrameModel, ABC):
+    """A data model is a data structure that contains the data of a frame aka a chunk of text contained by dilimiters.
+        It has abstract methods --> to str and --> to os.pipe() which are implemented by the concrete classes.
+    """
+    @abstractmethod
+    def to_pipe(self, pipe) -> None:
+        """Write the model to a named pipe."""
+        pass
+
+    @abstractmethod
+    def to_str(self) -> str:
+        """Return the frame data as a string representation."""
+        pass
+
+
+class SerialObject(AbstractDataModel, ABC):
+    """SerialObject is an abstract class that defines the interface for serializable objects within the abstract data model.
+        Inputs:
+            AbstractDataModel: The base class for the SerialObject class
+
+        Returns:
+            SerialObject object
+    
+    """
+    @abstractmethod
+    def dict(self) -> dict:
+        """Return a dictionary representation of the model."""
+        pass
+
+    @abstractmethod
+    def json(self) -> str:
+        """Return a JSON string representation of the model."""
+        pass
 
 @dataclass
 class Atom(AbstractDataModel):

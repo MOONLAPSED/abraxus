@@ -9,12 +9,19 @@ abraxus/
 """
 __all__ = ["Atom", "AtomicData", "ThreadSafeContextManager", "FormalTheory", "Event", "Action", "ActionResponse", "ScopeLifetimeGarden", "AtomicBot"]
 
-from middleware import Element, Entity, SerializableEntity
 from abc import ABC, abstractmethod
 from typing import Generic, TypeVar, Any, List, Optional, Dict
 from datetime import datetime
 T = TypeVar('T')
 V = TypeVar('V')
+
+from main import (
+    Element, 
+    Entity, 
+    SerializableEntity, 
+    Attribute, 
+    ConcreteSerialModel
+)
 
 class UniversalAtom(SerializableEntity, Generic[T, V]):
     """

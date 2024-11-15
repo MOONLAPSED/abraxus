@@ -29,7 +29,7 @@ from functools import wraps
 from dataclasses import dataclass
 from enum import Enum, auto
 
-from app.middleware import (
+from main import (
     Element, 
     Entity, 
     SerializableEntity, 
