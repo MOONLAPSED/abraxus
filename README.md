@@ -64,15 +64,13 @@ This paradigm aims to create AI agents that can not only learn and reason, but a
 Every CCC db is itself a type of training and context but built specifically for RUNTIME abstract agents and specifically not for concrete model training. This means that you can train a CCC db with a human, but you can also train a CCC db with a RLHF agent. This is a key distinction between CCC and RLHF. In other words, every CCCDB is like a 'model' or an 'architecture' for a RLHF agent to preform runtime behavior within such that the model/runtime itself can enable agentic motility - with any LLM 'model' specifically designed for consumer usecases and 'small' large language models.
 
 
-
-
-
-
-
 ## Best practices:
 - Utilize camelCase for internal source code
 - Utilize CAPS_CASE for ffi funcs and external source
 
+
+## Framing
+I aim to be the sub-Guido; the Guido of ml - shamelessly shuffling scripts around on someone elses platform while copying another someone else's: Wolfram's computational language. In other words, I aim to create a definitive collection of standard lib only machine learning modules, libs, and scripts, focused entirley on local and private inference. Again, shaemlessly plugging into Wolfram Language where possible, and why not - even paid inference but it will also be desgined for NO wolfram language whatsoever, at a reduced function set. Presumably, in the future, the same will be possible to say of inference providers, too (not yet). The only other platform (optional, NYE) is JAX (and technically cuda if you count that inference uses it).
 
 """
 ## Frontmatter Implementation

@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from functools import wraps
 from queue import Queue, Empty
+from datetime import datetime
 from typing import (
     Any, Dict, Optional, Union, Callable, TypeVar, Protocol, 
     runtime_checkable, List, Generic, Set, Coroutine, Type, ClassVar
@@ -68,6 +69,53 @@ class SerialObject(AbstractDataModel, ABC):
     def json(self) -> str:
         """Return a JSON string representation of the model."""
         pass
+@dataclass
+class ConcreteSerialModel(SerialObject):
+    """
+    This concrete implementation of SerialObject ensures that instances can
+    be used wherever a FrameModel, AbstractDataModel, or SerialObject is required,
+    hence demonstrating polymorphism.
+        Inputs:
+            SerialObject: The base class for the ConcreteSerialModel class
+
+        Returns:
+            ConcreteSerialModel object        
+    """
+
+    name: str
+    age: int
+    timestamp: datetime = field(default_factory=datetime.now)
+
+    def to_bytes(self) -> bytes:
+        """Return the JSON representation as bytes."""
+        return self.json().encode()
+
+    def to_pipe(self, pipe) -> None:
+        """
+        Write the JSON representation of the model to a named pipe.
+        TODO: actual implementation needed for communicating with the pipe.
+        """
+        pass
+
+    def to_str(self) -> str:
+        """Return the JSON representation as a string."""
+        return self.json()
+
+    def dict(self) -> dict:
+        """Return a dictionary representation of the model."""
+        return {
+            "name": self.name,
+            "age": self.age,
+            "timestamp": self.timestamp.isoformat(),
+        }
+
+    def json(self) -> str:
+        """Return a JSON representation of the model as a string."""
+        return json.dumps(self.dict())
+    
+    def to_pipe(self, pipe_name) -> None:
+        """Write the JSON representation of the model to a named pipe."""
+        write_to_pipe(pipe_name, self.json())
 
 @dataclass
 class Atom(AbstractDataModel):
