@@ -6,6 +6,7 @@
 
 /kb/*
 /kb/assets/*
+/sql/*
 
 # User-defined rules below
 /.scratch/*
