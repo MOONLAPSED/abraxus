@@ -7,6 +7,7 @@ import logging
 from enum import Enum, auto
 from contextlib import contextmanager
 import time
+from abc import ABC, abstractmethod
 
 # Type variables for representing quantum and classical states
 Q = TypeVar('Q')  # Quantum state
@@ -44,8 +45,8 @@ class TypeTheoreticState(Generic[Q, C]):
     def is_pure_classical(self) -> bool:
         return math.isclose(self.superposition_weight, 0.0)
 
-class TheoryTestHarness(unittest.TestCase):
-    """Test harness for quantum-classical type theory experiments"""
+class TheoryTestHarness(unittest.TestCase, ABC):
+    """Abstract base test harness for quantum-classical type theory experiments"""
     
     def setUp(self):
         self.logger = logging.getLogger(__name__)
@@ -67,7 +68,7 @@ class TheoryTestHarness(unittest.TestCase):
             decoherence_time = time.perf_counter() - start_time
             self.logger.info(f"Decoherence time: {decoherence_time:.6f} seconds")
     
-    def test_type_preservation[Q, C](self, 
+    def _test_type_preservation[Q, C](self, 
                                    initial_state: TypeTheoreticState[Q, C],
                                    operation: Callable[[TypeTheoreticState[Q, C]], TypeTheoreticState[Q, C]]) -> TestResult:
         """Test if types are preserved during quantum-classical transitions"""
@@ -94,7 +95,7 @@ class TheoryTestHarness(unittest.TestCase):
             self.logger.error(f"Type preservation test failed: {str(e)}")
             return TestResult.FAIL
     
-    def test_measurement_collapse[T](self,
+    def _test_measurement_collapse[T](self,
                                    state: TypeTheoreticState,
                                    measurement_operator: Callable[[TypeTheoreticState], Measurement[T]]) -> TestResult:
         """Test measurement-induced collapse of quantum states"""
@@ -117,7 +118,7 @@ class TheoryTestHarness(unittest.TestCase):
             self.logger.error(f"Measurement collapse test failed: {str(e)}")
             return TestResult.FAIL
     
-    def test_information_conservation(self,
+    def _test_information_conservation(self,
                                     initial_state: TypeTheoreticState,
                                     operation: Callable[[TypeTheoreticState], TypeTheoreticState]) -> TestResult:
         """Test conservation of information during type transformations"""
@@ -173,7 +174,7 @@ class QuantumTypingTheoryTests(TheoryTestHarness):
             )
             
         # Test the transition using the parent class method
-        result = super().test_type_preservation(initial_state, quantum_to_classical)
+        result = self._test_type_preservation(initial_state, quantum_to_classical)
         self.assertEqual(result, TestResult.PASS)
 
     def test_type_preservation(self):
@@ -188,7 +189,7 @@ class QuantumTypingTheoryTests(TheoryTestHarness):
                 superposition_weight=state.superposition_weight
             )
         
-        result = super().test_type_preservation(initial_state, identity_operation)
+        result = self._test_type_preservation(initial_state, identity_operation)
         self.assertEqual(result, TestResult.PASS)
 
     def test_measurement_collapse(self):
@@ -206,7 +207,7 @@ class QuantumTypingTheoryTests(TheoryTestHarness):
                 collapse_time=collapse_time
             )
         
-        result = super().test_measurement_collapse(state, measurement_operator)
+        result = self._test_measurement_collapse(state, measurement_operator)
         self.assertEqual(result, TestResult.PASS)
 
     def test_information_conservation(self):
@@ -222,7 +223,7 @@ class QuantumTypingTheoryTests(TheoryTestHarness):
                 superposition_weight=state.superposition_weight
             )
         
-        result = super().test_information_conservation(initial_state, unitary_operation)
+        result = self._test_information_conservation(initial_state, unitary_operation)
         self.assertEqual(result, TestResult.PASS)
 
 if __name__ == '__main__':
