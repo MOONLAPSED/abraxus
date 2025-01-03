@@ -1,29 +1,344 @@
-from __future__ import annotations
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#------------------------------------------------------------------------------
+# Standard Library Imports - 3.13 std libs **ONLY**
+#------------------------------------------------------------------------------
+import re
+import os
+import io
+import dis
+import sys
+import ast
+import time
+import json
+import math
+import uuid
+import shlex
+import struct
+import shutil
+import pickle
+import ctypes
+import logging
+import tomllib
+import pathlib
 import asyncio
 import inspect
-import json
-import logging
-import os
-import pathlib
-import struct
-import sys
-import pickle
-import threading
-import time
+import hashlib
+import platform
 import traceback
-import uuid
-from abc import ABC, abstractmethod
-from concurrent.futures import ThreadPoolExecutor
-from contextlib import contextmanager
-from dataclasses import dataclass, field
-from enum import Enum, auto
-from functools import wraps
+import functools
+import linecache
+import importlib
+import threading
+import subprocess
+import tracemalloc
+from pathlib import Path
+from enum import Enum, auto, StrEnum
 from queue import Queue, Empty
 from datetime import datetime
+from abc import ABC, abstractmethod
+from contextlib import contextmanager
+from functools import wraps, lru_cache
+from dataclasses import dataclass, field
+from concurrent.futures import ThreadPoolExecutor
+from importlib.util import spec_from_file_location, module_from_spec
+from types import SimpleNamespace, ModuleType,  MethodType, FunctionType, CodeType, TracebackType, FrameType
 from typing import (
-    Any, Dict, Optional, Union, Callable, TypeVar, Protocol, 
-    runtime_checkable, List, Generic, Set, Coroutine, Type, ClassVar
+    Any, Dict, List, Optional, Union, Callable, TypeVar, Tuple, Generic, Set,
+    Coroutine, Type, NamedTuple, ClassVar, Protocol, runtime_checkable
 )
+try:
+    from .__init__ import __all__
+    if not __all__:
+        __all__ = []
+    else:
+        __all__ += __file__
+except ImportError:
+    __all__ = []
+    __all__ += __file__
+IS_WINDOWS = os.name == 'nt'
+IS_POSIX = os.name == 'posix'
+#------------------------------------------------------------------------------
+# BaseModel (no-copy immutable dataclasses for data models)
+#------------------------------------------------------------------------------
+class BaseModel:
+    __slots__ = ('__dict__', '__weakref__')
+    def __init__(self, **data):
+        for name, value in data.items():
+            setattr(self, name, value)
+    def __setattr__(self, name, value):
+        if name in self.__annotations__:
+            expected_type = self.__annotations__[name]
+            if not isinstance(value, expected_type):
+                raise TypeError(f"Expected {expected_type} for {name}, got {type(value)}")
+            validator = getattr(self.__class__, f'validate_{name}', None)
+            if validator:
+                validator(self, value)
+        super().__setattr__(name, value)
+    @classmethod
+    def create(cls, **kwargs):
+        return cls(**kwargs)
+    def dict(self):
+        return {name: getattr(self, name) for name in self.__annotations__}
+    def __repr__(self):
+        attrs = ', '.join(f"{name}={getattr(self, name)!r}" for name in self.__annotations__)
+        return f"{self.__class__.__name__}({attrs})"
+    def __str__(self):
+        attrs = ', '.join(f"{name}={getattr(self, name)}" for name in self.__annotations__)
+        return f"{self.__class__.__name__}({attrs})"
+    def clone(self):
+        return self.__class__(**self.dict())
+def frozen(cls): # decorator
+    original_setattr = cls.__setattr__
+    def __setattr__(self, name, value):
+        if hasattr(self, name):
+            raise AttributeError(f"Cannot modify frozen attribute '{name}'")
+        original_setattr(self, name, value)
+    cls.__setattr__ = __setattr__
+    return cls
+def validate(validator: Callable[[Any], None]):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, value):
+            return validator(value)
+        return wrapper
+    return decorator
+class FileModel(BaseModel):
+    file_name: str
+    file_content: str
+    def save(self, directory: pathlib.Path):
+        with (directory / self.file_name).open('w') as file:
+            file.write(self.file_content)
+@frozen
+class Module(BaseModel):
+    file_path: pathlib.Path
+    module_name: str
+    @validate(lambda x: x.endswith('.py'))
+    def validate_file_path(self, value):
+        return value
+    @validate(lambda x: x.isidentifier())
+    def validate_module_name(self, value):
+        return value
+    @frozen
+    def __init__(self, file_path: pathlib.Path, module_name: str):
+        super().__init__(file_path=file_path, module_name=module_name)
+        self.file_path = file_path
+        self.module_name = module_name
+def create_model_from_file(file_path: pathlib.Path):
+    try:
+        with file_path.open('r', encoding='utf-8', errors='ignore') as file:
+            content = file.read()
+        model_name = file_path.stem.capitalize() + 'Model'
+        model_class = type(model_name, (FileModel,), {})
+        instance = model_class.create(file_name=file_path.name, file_content=content)
+        logging.info(f"Created {model_name} from {file_path}")
+        return model_name, instance
+    except Exception as e:
+        logging.error(f"Failed to create model from {file_path}: {e}")
+        return None, None
+def load_files_as_models(root_dir: pathlib.Path, file_extensions: List[str]) -> Dict[str, BaseModel]:
+    models = {}
+    for file_path in root_dir.rglob('*'):
+        if file_path.is_file() and file_path.suffix in file_extensions:
+            model_name, instance = create_model_from_file(file_path)
+            if model_name and instance:
+                models[model_name] = instance
+                sys.modules[model_name] = instance
+    return models
+#------------------------------------------------------------------------------
+# Logging Configuration
+#------------------------------------------------------------------------------
+class CustomFormatter(logging.Formatter):
+    """Custom formatter for colored console output."""
+    COLORS = {
+        'grey': "\x1b[38;20m",
+        'yellow': "\x1b[33;20m",
+        'red': "\x1b[31;20m",
+        'bold_red': "\x1b[31;1m",
+        'green': "\x1b[32;20m",
+        'reset': "\x1b[0m"
+    }
+    FORMAT = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
+    FORMATS = {
+        logging.DEBUG: COLORS['grey'] + FORMAT + COLORS['reset'],
+        logging.INFO: COLORS['green'] + FORMAT + COLORS['reset'],
+        logging.WARNING: COLORS['yellow'] + FORMAT + COLORS['reset'],
+        logging.ERROR: COLORS['red'] + FORMAT + COLORS['reset'],
+        logging.CRITICAL: COLORS['bold_red'] + FORMAT + COLORS['reset']
+    }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.log_queue = Queue()
+        self.log_thread = threading.Thread(target=self._log_thread_func, daemon=True)
+        self.log_thread.start()
+    def format(self, record):
+        log_fmt = self.FORMATS.get(record.levelno, self.FORMAT)
+        formatter = logging.Formatter(log_fmt)
+        return formatter.format(record)
+    def _log_thread_func(self):
+        while True:
+            try:
+                record = self.log_queue.get()
+                if record is None:
+                    break
+                super().handle(record)
+            except Exception:
+                import traceback
+                print("Error in log thread:", file=sys.stderr)
+                traceback.print_exc()
+    def emit(self, record):
+        self.log_queue.put(record)
+    def close(self):
+        self.log_queue.put(None)
+        self.log_thread.join()
+class AdminLogger(logging.LoggerAdapter):
+    """Logger adapter for administrative logging."""
+    def __init__(self, logger, extra=None):
+        super().__init__(logger, extra or {})
+    def process(self, msg, kwargs):
+        return f"{self.extra.get('name', 'Admin')}: {msg}", kwargs
+logger = AdminLogger(logging.getLogger(__name__))
+#------------------------------------------------------------------------------
+# Security
+#------------------------------------------------------------------------------
+AccessLevel = Enum('AccessLevel', 'READ WRITE EXECUTE ADMIN USER')
+@dataclass
+class AccessPolicy:
+    """Defines access control policies for runtime operations."""
+    level: AccessLevel
+    namespace_patterns: list[str] = field(default_factory=list)
+    allowed_operations: list[str] = field(default_factory=list)
+    def can_access(self, namespace: str, operation: str) -> bool:
+        return any(pattern in namespace for pattern in self.namespace_patterns) and \
+               operation in self.allowed_operations
+class SecurityContext:
+    """Manages security context and audit logging for runtime operations."""
+    def __init__(self, user_id: str, access_policy: AccessPolicy):
+        self.user_id = user_id
+        self.access_policy = access_policy
+        self._audit_log = []
+    def log_access(self, namespace: str, operation: str, success: bool):
+        self._audit_log.append({
+            "user_id": self.user_id,
+            "namespace": namespace,
+            "operation": operation,
+            "success": success,
+            "timestamp": datetime.now().timestamp()
+        })
+class SecurityValidator(ast.NodeVisitor):
+    """Validates AST nodes against security policies."""
+    def __init__(self, security_context: SecurityContext):
+        self.security_context = security_context
+    def visit_Name(self, node):
+        if not self.security_context.access_policy.can_access(node.id, "read"):
+            raise PermissionError(f"Access denied to name: {node.id}")
+        self.generic_visit(node)
+    def visit_Call(self, node):
+        if isinstance(node.func, ast.Name):
+            if not self.security_context.access_policy.can_access(node.func.id, "execute"):
+                raise PermissionError(f"Access denied to function: {node.func.id}")
+        self.generic_visit(node)
+#------------------------------------------------------------------------------
+# Runtime State Management
+#------------------------------------------------------------------------------
+def register_models(models: Dict[str, BaseModel]):
+    for model_name, instance in models.items():
+        globals()[model_name] = instance
+        logging.info(f"Registered {model_name} in the global namespace")
+def runtime(root_dir: pathlib.Path):
+    file_models = load_files_as_models(root_dir, ['.md', '.txt'])
+    register_models(file_models)
+@dataclass
+class RuntimeState:
+    """Manages runtime state and filesystem operations."""
+    pdm_installed: bool = False
+    virtualenv_created: bool = False
+    dependencies_installed: bool = False
+    lint_passed: bool = False
+    code_formatted: bool = False
+    tests_passed: bool = False
+    benchmarks_run: bool = False
+    pre_commit_installed: bool = False
+    variables: Dict[str, Any] = field(default_factory=dict)
+    timestamp: datetime = field(default_factory=datetime.now)
+    allowed_root: str = field(init=False)
+    def __post_init__(self):
+        try:
+            self.allowed_root = os.path.dirname(os.path.realpath(__file__))
+            if not any(os.listdir(self.allowed_root)):
+                raise FileNotFoundError(f"Allowed root directory empty: {self.allowed_root}")
+            logging.info(f"Allowed root directory found: {self.allowed_root}")
+        except Exception as e:
+            logging.error(f"Error initializing RuntimeState: {e}")
+            raise
+    @classmethod
+    def platform(cls):
+        """Initialize platform-specific state."""
+        if IS_POSIX:
+            from ctypes import cdll
+        elif IS_WINDOWS:
+            from ctypes import windll
+            from ctypes.wintypes import DWORD, HANDLE
+        try:
+            state = cls()
+            tracemalloc.start()
+            return state
+        except Exception as e:
+            logging.warning(f"Failed to initialize runtime state: {e}")
+            return None
+    async def run_command_async(self, command: str, shell: bool = False, timeout: int = 120):
+        """Run a system command asynchronously with timeout."""
+        logging.info(f"Running command: {command}")
+        split_command = shlex.split(command, posix=IS_POSIX)
+        try:
+            process = await asyncio.create_subprocess_exec(
+                *split_command,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                shell=shell
+            )
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=timeout)
+            return {
+                "return_code": process.returncode,
+                "output": stdout.decode() if stdout else "",
+                "error": stderr.decode() if stderr else "",
+            }
+        except asyncio.TimeoutError:
+            logging.error(f"Command '{command}' timed out.")
+            return {"return_code": -1, "output": "", "error": "Command timed out"}
+        except Exception as e:
+            logging.error(f"Error running command '{command}': {str(e)}")
+            return {"return_code": -1, "output": "", "error": str(e)}
+#------------------------------------------------------------------------------
+# Runtime Namespace Management
+#------------------------------------------------------------------------------
+class RuntimeNamespace:
+    """Manages hierarchical runtime namespaces with security controls."""
+    def __init__(self, name: str = "root", parent: Optional['RuntimeNamespace'] = None):
+        self._name = name
+        self._parent = parent
+        self._children: Dict[str, 'RuntimeNamespace'] = {}
+        self._content = SimpleNamespace()
+        self._security_context: Optional[SecurityContext] = None
+        self.available_modules: Dict[str, Any] = {}
+    @property
+    def full_path(self) -> str:
+        if self._parent:
+            return f"{self._parent.full_path}.{self._name}"
+        return self._name
+    def add_child(self, name: str) -> 'RuntimeNamespace':
+        child = RuntimeNamespace(name, self)
+        self._children[name] = child
+        return child
+    def get_child(self, path: str) -> Optional['RuntimeNamespace']:
+        parts = path.split(".", 1)
+        if len(parts) == 1:
+            return self._children.get(parts[0])
+        child = self._children.get(parts[0])
+        return child.get_child(parts[1]) if child and len(parts) > 1 else None
+#------------------------------------------------------------------------------
+# Type Definitions
+#------------------------------------------------------------------------------
 class FrameModel(ABC):
     """A frame model is a data structure that contains the data of a frame aka a chunk of text contained by dilimiters.
         Delimiters are defined as '---' and '\n' or its analogues (EOF) or <|in_end|> or "..." etc for the start and end of a frame respectively.)
@@ -113,16 +428,21 @@ class ConcreteSerialModel(SerialObject):
         """Return a JSON representation of the model as a string."""
         return json.dumps(self.dict())
     
-    def to_pipe(self, pipe_name) -> None:
+    def write_to_pipe(self, pipe) -> None:
         """Write the JSON representation of the model to a named pipe."""
-        write_to_pipe(pipe_name, self.json())
+        if pipe:
+            pipe.write(self.to_bytes())
+            pipe.close()
+        else:
+            print(f'PipeError')
+        pass
 
 @dataclass
-class Atom(AbstractDataModel):
+class _Atom_(AbstractDataModel):
     """Monolithic Atom class that integrates with the middleware model."""
     name: str
     value: Any
-    elements: List[Element] = field(default_factory=list)
+    elements: List[AbstractDataModel] = field(default_factory=list)
     serializer: ConcreteSerialModel = None  # Optional serializer
 
     def to_bytes(self) -> bytes:
@@ -156,29 +476,6 @@ class Atom(AbstractDataModel):
             return self.serializer.to_json()
         else:
             return self.json()
-
-"""py objects are implemented as C structures.
-typedef struct _object {
-    Py_ssize_t ob_refcnt;
-    PyTypeObject *ob_type;
-} PyObject; """
-# Everything in Python is an object, and every object has a type. The type of an object is a class. Even the
-# type class itself is an instance of type. Functions defined within a class become method objects when
-# accessed through an instance of the class
-"""(3.13 std lib)Functions are instances of the function class
-Methods are instances of the method class (which wraps functions)
-Both function and method are subclasses of object
-homoiconism dictates the need for a way to represent all Python constructs as first class citizen(fcc):
-    (functions, classes, control structures, operations, primitive values)
-nominative 'true OOP'(SmallTalk) and my specification demands code as data and value as logic, structure.
-The Atom(), our polymorph of object and fcc-apparent at runtime, always represents the literal source code
-    which makes up their logic and possess the ability to be stateful source code data structure. """
-# Atom()(s) are a wrapper that can represent any Python object, including values, methods, functions, and classes.
-class AtomType(Enum):
-    VALUE = auto()  # implies all Atom()(s) are both their source code and the value generated by their source code (at runtime)
-    FUNCTION = auto()  # are fcc along with object, class, method, etc are polymorphs
-    CLASS = auto()
-    MODULE = auto()  # python 'module' ie. packaging, eg: code as data runtime 'database'
 """Homoiconism dictates that, upon runtime validation, all objects are code and data.
 To facilitate; we utilize first class functions and a static typing system.
 This maps perfectly to the three aspects of nominative invariance:
@@ -196,11 +493,42 @@ What's conserved across these transformations:
     Information content
     Causal structure
     Computational potential"""
+# Atom()(s) are a wrapper that can represent any Python object, including values, methods, functions, and classes.
 T = TypeVar('T', bound=any) # T for TypeVar, V for ValueVar. Homoicons are T+V.
 V = TypeVar('V', bound=Union[int, float, str, bool, list, dict, tuple, set, object, Callable, type])
 C = TypeVar('C', bound=Callable[..., Any])  # callable 'T'/'V' first class function interface
-DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE DICT') # 'T' vars (stdlib)
-
+"""py objects are implemented as C structures.
+typedef struct _object {
+    Py_ssize_t ob_refcnt;
+    PyTypeObject *ob_type;
+} PyObject; """
+# Everything in Python is an object, and every object has a type. The type of an object is a class. Even the
+# type class itself is an instance of type. Functions defined within a class become method objects when
+# accessed through an instance of the class
+"""(3.13 std lib)Functions are instances of the function class
+Methods are instances of the method class (which wraps functions)
+Both function and method are subclasses of object
+homoiconism dictates the need for a way to represent all Python constructs as first class citizen(fcc):
+    (functions, classes, control structures, operations, primitive values)
+nominative 'true OOP'(SmallTalk) and my specification demands code as data and value as logic, structure.
+The Atom(), our polymorph of object and fcc-apparent at runtime, always represents the literal source code
+    which makes up their logic and possess the ability to be stateful source code data structure. """
+# HOMOICONISTIC morphological source code displays 'modified quine' behavior
+# within a validated runtime, if and only if the valid python interpreter
+# has r/w/x permissions to the source code file and some method of writing
+# state to the source code file is available. Any interruption of the
+# '__exit__` method or misuse of '__enter__' will result in a runtime error
+# AP (Availability + Partition Tolerance): A system that prioritizes availability and partition
+# tolerance may use a distributed architecture with eventual consistency (e.g., Cassandra or Riak).
+# This ensures that the system is always available (availability), even in the presence of network
+# partitions (partition tolerance). However, the system may sacrifice consistency, as nodes may have
+# different views of the data (no consistency). A homoiconic piece of source code is eventually
+# consistent, assuming it is able to re-instantiated.
+# Enums for type system
+DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE')
+AtomType = Enum('AtomType', 'FUNCTION CLASS MODULE OBJECT', bound=_Atom_)
+AccessLevel = Enum('AccessLevel', 'READ WRITE EXECUTE ADMIN USER')
+QuantumState = Enum('QuantumState', ['SUPERPOSITION', 'ENTANGLED', 'COLLAPSED', 'DECOHERENT'])
 @runtime_checkable
 class Atom(Protocol):
     """
@@ -208,8 +536,7 @@ class Atom(Protocol):
     Defines the minimal interface that an Atom must implement.
     """
     id: str
-
-def atom(cls: Type[{T, V, C}]) -> Type[{T, V, C}]: # homoicon decorator
+def __atom__(cls: Type[{T, V, C}]) -> Type[{T, V, C}]: # homoicon decorator
     """Decorator to create a homoiconic atom."""
     original_init = cls.__init__
     def new_init(self, *args, **kwargs):
@@ -219,9 +546,7 @@ def atom(cls: Type[{T, V, C}]) -> Type[{T, V, C}]: # homoicon decorator
 
     cls.__init__ = new_init
     return cls
-
 AtomType = TypeVar('AtomType', bound=Atom)
-QuantumAtomState = Enum('QuantumAtomState', ['SUPERPOSITION', 'ENTANGLED', 'COLLAPSED', 'DECOHERENT'])
 """The type system forms the "boundary" theory
 The runtime forms the "bulk" theory
 The homoiconic property ensures they encode the same information
@@ -230,9 +555,37 @@ The holoiconic property enables:
     Computations as measurements
     Types as boundary conditions
     Runtime as bulk geometry"""
+class HoloiconicTransform(Generic[T, V, C]):
+    """A square matrix `A` is Hermitian if and only if it is unitarily diagonalizable with real eigenvalues. """
+    @staticmethod
+    def flip(value: V) -> C:
+        """Transform value to computation (inside-out)"""
+        return lambda: value
+    @staticmethod
+    def flop(computation: C) -> V:
+        """Transform computation to value (outside-in)"""
+        return computation()
+"""
+The Heisenberg Uncertainty Principle tells us that we can’t precisely measure both the position and momentum of a particle. In computation, we encounter similar trade-offs between precision and performance:
+    For instance, with approximate computing or probabilistic algorithms, we trade off exact accuracy for faster or less resource-intensive computation.
+    Quantum computing itself takes advantage of this principle, allowing certain computations to run probabilistically rather than deterministically.
+The idea that data could be "uncertain" in some way until acted upon or observed might open new doors in software architecture. Just as quantum computing uses uncertainty productively, conventional computing might benefit from intentionally embracing imprecise states or probabilistic pathways in specific contexts, especially in AI, optimization, and real-time computation.
+Zero-copy and immutable data structures are, in a way, a step toward this quantum principle. By reducing the “work” done on data, they minimize thermodynamic loss. We could imagine architectures that go further, preserving computational history or chaining operations in such a way that information isn't “erased” but transformed, making the process more like a conservation of informational “energy.”
+If algorithms were seen as “wavefunctions” representing possible computational outcomes, then choosing a specific outcome (running the algorithm) would be like collapsing a quantum state. In this view:
+    Each step of an algorithm could be seen as an evolution of the wavefunction, transforming the data structure through time.
+    Non-deterministic algorithms could explore multiple “paths” through data, and the most efficient or relevant one could be selected probabilistically.
+    Treating data and computation as probabilistic, field-like entities rather than fixed operations on fixed memory.
+    Embracing superpositions, potential operations, and entanglement within software architecture, allowing for context-sensitive, energy-efficient, and exploratory computation.
+    Leveraging thermodynamic principles more deeply, designing architectures that conserve “informational energy” by reducing unnecessary state changes and maximizing information flow efficiency.
+I want to prove that, under the right conditions, a classical system optimized with the right software architecture and hardware platform can display behaviors indicative of quantum informatics. One's experimental setup would ideally confirm that even if the underlying hardware is classical, certain complex interactions within the software/hardware could bring about phenomena reminiscent of quantum mechanics.
+Cognosis is rooted in the idea that classical architectures (like the von Neumann model and Turing machines) weren't able to exploit quantum properties due to their deterministic, state-by-state execution model. But modern neural networks and transformers, with their probabilistic computations, massive parallelism, and high-dimensional state spaces, could approach a threshold where quantum-like behaviors begin to appear—especially in terms of entangling information or decoherence These models’ emergent properties might align more closely with quantum processes, as they involve not just deterministic processing but complex probabilistic states that "collapse" during inference (analogous to quantum measurement). If one can exploit this probabilistic, distributed nature, it might actually push classical hardware into a quasi-quantum regime.
+"""
 
+"""Self-Adjoint Operators on a Hilbert Space: In quantum mechanics, the state space of a system is typically modeled as a Hilbert space—a complete vector space equipped with an inner product. States within this space can be represented as vectors (ket vectors, ∣ψ⟩∣ψ⟩), and observables (like position, momentum, or energy) are modeled by self-adjoint operators.
 
-
+    Self-adjoint operators are crucial because they guarantee that the eigenvalues (which represent possible measurement outcomes in quantum mechanics) are real numbers, which is a necessary condition for observable quantities in a physical theory. In quantum mechanics, the evolution of a state ∣ψ⟩∣ψ⟩ under an observable A^A^ can be described as the action of the operator A^A^ on ∣ψ⟩∣ψ⟩, and these operators must be self-adjoint to maintain physical realism.
+    
+    In-other words, self-adjoint operators are equal to their Hermitian conjugates."""
 
 @dataclass
 class ErrorAtom(Atom):
@@ -349,7 +702,6 @@ class ErrorHandler:
         
         return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
 
-# Global error handler instance
 global_error_handler = ErrorHandler()
 
 # Convenience decorator
@@ -358,45 +710,25 @@ def handle_errors(func):
 
 EventBus = EventBus('EventBus')
 
-class HoloiconicTransform(Generic[T, V, C]):
-    @staticmethod
-    def flip(value: V) -> C:
-        """Transform value to computation (inside-out)"""
-        return lambda: value
-
-    @staticmethod
-    def flop(computation: C) -> V:
-        """Transform computation to value (outside-in)"""
-        return computation()
-
-# Custom logger setup
-class CustomFormatter(logging.Formatter):
-    grey = "\x1b[38;20m"
-    yellow = "\x1b[33;20m"
-    red = "\x1b[31;20m"
-    bold_red = "\x1b[31;1m"
-    reset = "\x1b[0m"
-    format = "%(asctime)s - %(name)s - %(levelname)s - %(message)s (%(filename)s:%(lineno)d)"
-
-    FORMATS = {
-        logging.DEBUG: grey + format + reset,
-        logging.INFO: grey + format + reset,
-        logging.WARNING: yellow + format + reset,
-        logging.ERROR: red + format + reset,
-        logging.CRITICAL: bold_red + format + reset
-    }
-
-    def format(self, record):
-        log_fmt = self.FORMATS.get(record.levelno)
-        formatter = logging.Formatter(log_fmt)
-        return formatter.format(record)
+class CustomFormatter():
+    def __init__(self, fmt):
+        self.fmt = fmt
+        def format(self, record):
+            return self.fmt.format(record.__dict__)
+        self.format = format.__get__(self, CustomFormatter)
+    
+    def __get__(self, instance, owner):
+        return self.format
+    
+    def __set__(self, instance, value):
+        self.fmt = value
 
 def setup_logger(name):
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
     ch = logging.StreamHandler()
     ch.setLevel(logging.DEBUG)
-    ch.setFormatter(CustomFormatter())
+    ch.setFormatter(CustomFormatter() if name == 'EventBus' else logging.Formatter.basicConfig())
     logger.addHandler(ch)
     return logger
 
@@ -444,319 +776,6 @@ def bench(func):
             Logger.exception(f"Error in {func.__name__}: {str(e)}")
             raise
     return wrapper
-
-class BaseModel:
-    __slots__ = ('__dict__', '__weakref__')
-
-    def __setattr__(self, name, value):
-        if name in self.__annotations__:
-            expected_type = self.__annotations__[name]
-            # Handle generic types and Any
-            if hasattr(expected_type, '__origin__'):
-                # Skip validation for generic types
-                pass
-            elif expected_type != Any:
-                if not isinstance(value, expected_type):
-                    raise TypeError(f"Expected {expected_type} for {name}, got {type(value)}")
-            validator = getattr(self.__class__, f'validate_{name}', None)
-            if validator:
-                validator(self, value)
-        super().__setattr__(name, value)
-
-    @classmethod
-    def create(cls, **kwargs):
-        return cls(**kwargs)
-
-    def dict(self):
-        return {name: getattr(self, name) for name in self.__annotations__}
-
-    def json(self):
-        return json.dumps(self.dict())
-
-    @classmethod
-    def from_json(cls, json_str):
-        return cls(**json.loads(json_str))
-
-    def __repr__(self):
-        attrs = ', '.join(f"{name}={getattr(self, name)!r}" for name in self.__annotations__)
-        return f"{self.__class__.__name__}({attrs})"
-
-    def __str__(self):
-        attrs = ', '.join(f"{name}={getattr(self, name)}" for name in self.__annotations__)
-        return f"{self.__class__.__name__}({attrs})"
-    
-    def clone(self):
-        return self.__class__(**self.dict())
-
-def frozen(cls):
-    original_setattr = cls.__setattr__
-
-    def __setattr__(self, name, value):
-        if hasattr(self, name):
-            raise AttributeError(f"Cannot modify frozen attribute '{name}'")
-        original_setattr(self, name, value)
-    
-    cls.__setattr__ = __setattr__
-    return cls
-
-def validate(validator: Callable[[Any], None]):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(self, value):
-            validator(value)
-            return func(self, value)
-        return wrapper
-    return decorator
-
-class FileModel(BaseModel):
-    file_name: str
-    file_content: str
-    
-    @log()
-    def save(self, directory: pathlib.Path):
-        try:
-            with (directory / self.file_name).open('w') as file:
-                file.write(self.file_content)
-            Logger.info(f"Saved file: {self.file_name}")
-        except IOError as e:
-            Logger.error(f"Failed to save file {self.file_name}: {str(e)}")
-            raise
-
-@frozen
-class Module(BaseModel):
-    file_path: pathlib.Path
-    module_name: str
-
-    @validate(lambda x: x.suffix == '.py')
-    def validate_file_path(self, value):
-        return value
-
-    @validate(lambda x: x.isidentifier())
-    def validate_module_name(self, value):
-        return value
-
-    def __init__(self, file_path: pathlib.Path, module_name: str):
-        super().__init__(file_path=file_path, module_name=module_name)
-
-@log()
-def create_model_from_file(file_path: pathlib.Path):
-    try:
-        with file_path.open('r', encoding='utf-8', errors='ignore') as file:
-            content = file.read()
-
-        model_name = file_path.stem.capitalize() + 'Model'
-        # Create a proper class with BaseModel inheritance
-        model_dict = {
-            'file_name': str,
-            'file_content': str,
-            '__annotations__': {'file_name': str, 'file_content': str}
-        }
-        model_class = type(model_name, (FileModel,), model_dict)
-        instance = model_class(file_name=file_path.name, file_content=content)
-        Logger.info(f"Created {model_name} from {file_path}")
-        return model_name, instance
-    except Exception as e:
-        Logger.error(f"Failed to create model from {file_path}: {e}")
-        return None, None
-
-@log()
-def load_files_as_models(root_dir: pathlib.Path, file_extensions: List[str]) -> Dict[str, BaseModel]:
-    models = {}
-    for file_path in root_dir.rglob('*'):
-        if file_path.is_file() and file_path.suffix in file_extensions:
-            model_name, instance = create_model_from_file(file_path)
-            if model_name and instance:
-                models[model_name] = instance
-                sys.modules[model_name] = instance
-    return models
-
-@log()
-def register_models(models: Dict[str, BaseModel]):
-    for model_name, instance in models.items():
-        globals()[model_name] = instance
-        Logger.info(f"Registered {model_name} in the global namespace")
-
-@log()
-def runtime(root_dir: pathlib.Path):
-    file_models = load_files_as_models(root_dir, ['.md', '.txt', '.py'])
-    register_models(file_models)
-
-TypeMap = {
-    int: DataType.INTEGER,
-    float: DataType.FLOAT,
-    str: DataType.STRING,
-    bool: DataType.BOOLEAN,
-    type(None): DataType.NONE,
-    list: DataType.LIST,
-    tuple: DataType.TUPLE,
-    dict: DataType.DICT
-}
-
-def get_type(value: Any) -> Optional[DataType]:
-    return TypeMap.get(type(value))
-
-def validate_datum(value: Any) -> bool:
-    return get_type(value) is not None
-
-def process_datum(value: Any) -> str:
-    dtype = get_type(value)
-    return f"Processed {dtype.name}: {value}" if dtype else "Unknown data type"
-
-def safe_process_input(value: Any) -> str:
-    return "Invalid input type" if not validate_datum(value) else process_datum(value)
-
-def encode(atom: 'Atom') -> bytes:
-    data = {
-        'tag': atom.tag,
-        'value': atom.value,
-        'children': [encode(child) for child in atom.children],
-        'metadata': atom.metadata
-    }
-    return pickle.dumps(data)
-
-def decode(data: bytes) -> 'Atom':
-    data = pickle.loads(data)
-    atom = Atom(data['tag'], data['value'], [decode(child) for child in data['children']], data['metadata'])
-    return atom
-
-@dataclass
-class Atom(BaseModel):
-    id: str
-    value: Any
-    data_type: str = field(init=False)
-    attributes: Dict[str, Any] = field(default_factory=dict)
-    subscribers: Set['Atom'] = field(default_factory=set)
-    MAX_INT_BIT_LENGTH: ClassVar[int] = 1024
-
-    def __post_init__(self):
-        self.data_type = self.infer_data_type(self.value)
-        Logger.debug(f"Initialized Atom with value: {self.value} and inferred type: {self.data_type}")
-
-    async def execute(self, *args, **kwargs) -> Any:
-        Logger.debug(f"Atom {self.id} executing with value: {self.value}")
-        return self.value
-
-    def infer_data_type(self, value: Any) -> str:
-        type_map = {
-            str: 'string',
-            int: 'integer',
-            float: 'float',
-            bool: 'boolean',
-            list: 'list',
-            dict: 'dictionary',
-            type(None): 'none'
-        }
-        inferred_type = type_map.get(type(value), 'unsupported')
-        Logger.debug(f"Inferred data type: {inferred_type}")
-        return inferred_type
-
-    @abstractmethod
-    def encode(self) -> bytes:
-        pass
-
-    def validate(self) -> bool:
-        return True
-
-    def __getitem__(self, key: str) -> Any:
-        return self.attributes[key]
-
-    def __setitem__(self, key: str, value: Any) -> None:
-        self.attributes[key] = value
-
-    def __delitem__(self, key: str) -> None:
-        del self.attributes[key]
-
-    def __contains__(self, key: str) -> bool:
-        return key in self.attributes
-
-    @log()
-    async def send_message(self, message: Any, ttl: int = 3) -> None:
-        if ttl <= 0:
-            Logger.info(f"Message {message} dropped due to TTL")
-            return
-        Logger.info(f"Atom {self.id} received message: {message}")
-        for sub in self.subscribers:
-            await sub.receive_message(message, ttl - 1)
-
-    @log()
-    async def receive_message(self, message: Any, ttl: int) -> None:
-        Logger.info(f"Atom {self.id} processing received message: {message} with TTL {ttl}")
-        await self.send_message(message, ttl)
-
-    def subscribe(self, atom: 'Atom') -> None:
-        self.subscribers.add(atom)
-        Logger.info(f"Atom {self.id} subscribed to {atom.id}")
-
-    def unsubscribe(self, atom: 'Atom') -> None:
-        self.subscribers.discard(atom)
-        Logger.info(f"Atom {self.id} unsubscribed from {atom.id}")
-
-class AntiAtom(Atom):
-    def __init__(self, atom: Atom):
-        super().__init__(id=f"anti_{atom.id}", value=None, attributes=atom.attributes)
-        self.original_atom = atom
-
-    def encode(self) -> bytes:
-        return b'anti_' + self.original_atom.encode()
-
-    async def execute(self, *args, **kwargs) -> Any:
-        # Properly await the original atom's execute method
-        result = await self.original_atom.execute(*args, **kwargs)
-        return not result
-
-@dataclass
-class AtomicTheory:
-    base_atom: Atom
-    elements: List[Atom]
-    theory_id: str = field(default_factory=lambda: str(uuid.uuid4()))
-    operations: Dict[str, Callable[..., Any]] = field(default_factory=lambda: {
-        '⊤': lambda x: True,
-        '⊥': lambda x: False,
-        '¬': lambda x: not x,
-        '∧': lambda a, b: a and b,
-        '∨': lambda a, b: a or b,
-        '→': lambda a, b: (not a) or b,
-        '↔': lambda a, b: (a and b) or (not a and not b)
-    })
-    anti_theory: 'AntiAtom' = field(init=False)
-
-    def __repr__(self) -> str:
-        return f"AtomicTheory(theory_id={self.theory_id}, elements={self.elements!r}, operations={list(self.operations.keys())})"
-
-    async def execute(self, operation: str, *args, **kwargs) -> Any:
-        Logger.debug(f"Executing AtomicTheory {self.theory_id} operation: {operation} with args: {args}")
-        if operation in self.operations:
-            result = self.operations[operation](*args)
-            Logger.debug(f"Operation result: {result}")
-            return result
-        else:
-            raise ValueError(f"Operation {operation} not supported in AtomicTheory.")
-
-    def __post_init__(self):
-        self.anti_theory = AntiAtom(self.base_atom)
-        Logger.debug(f"Initialized AtomicTheory with elements: {self.elements}")
-
-    def __repr__(self) -> str:
-        return f"AtomicTheory(theory_id={self.theory_id}, elements={self.elements!r}, operations={list(self.operations.keys())})"
-
-    def add_operation(self, name: str, operation: Callable[..., Any]) -> None:
-        Logger.debug(f"Adding operation '{name}' to AtomicTheory")
-        self.operations[name] = operation
-
-    def encode(self) -> bytes:
-        Logger.debug("Encoding AtomicTheory")
-        encoded_elements = b''.join([element.encode() for element in self.elements])
-        return struct.pack(f'{len(encoded_elements)}s', encoded_elements)
-
-    def decode(self, data: bytes) -> None:
-        Logger.debug("Decoding AtomicTheory from bytes")
-        # Splitting data for elements is dependent on specific encoding scheme, here simplified
-        num_elements = struct.unpack('i', data[:4])[0]
-        element_size = len(data[4:]) // num_elements
-        segments = [data[4+element_size*i:4+element_size*(i+1)] for i in range(num_elements)]
-        for element, segment in zip(self.elements, segments):
-            element.decode(segment)
-        Logger.debug(f"Decoded AtomicTheory elements: {self.elements}")
 
 @dataclass
 class TaskAtom(Atom): # Tasks are atoms that represent asynchronous potential actions
@@ -1002,69 +1021,3 @@ class ActionRequestAtom(Atom):  # User-initiated action request
             self_info=data["self_info"],
             echo=data.get("echo")
         )
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-# Main application logic
-async def run_atomic_theory_demo():
-    base_atom = Atom(id="theory_base", value=None)
-    theory = AtomicTheory(
-        base_atom=base_atom,
-        elements=[
-            Atom(id="a", value=True),
-            Atom(id="b", value=False)
-        ],
-        theory_id="demo_theory"  # Using theory_id here
-    )
-    print(theory)
-    print(theory.anti_theory)
-
-    result = await theory.execute('∧', theory.elements[0].value, theory.elements[1].value)
-    print(f"Result of A ∧ B: {result}")
-
-    result = await theory.anti_theory.execute('∧', theory.elements[0].value, theory.elements[1].value)
-    print(f"Result of ¬(A ∧ B): {result}")
-
-@log()
-def main():
-    root_dir = pathlib.Path("./")  # Adjust this path as needed
-    file_models = load_files_as_models(root_dir, ['.md', '.txt']) # ['.md', '.txt', '.py']
-    register_models(file_models)
-    runtime(root_dir)
-
-    asyncio.run(run_atomic_theory_demo())
-
-if __name__ == "__main__":
-    main()
-    # Potential user interaction
-    atom = Atom(id="user_input", value=None)
-    transformed = HoloiconicTransform.flip(atom.value)
-    original = HoloiconicTransform.flop(transformed)
-    assert original == atom.value
-
-    # Quick start
-    from working.mro import LogicalMROExample, set_process_priority
-
-    # Set process to low priority
-    set_process_priority(0)
-
-    # Analyze class structures
-    analyzer = LogicalMROExample()
-    result = analyzer.analyze_classes()
-    print(result['s_expressions'])
