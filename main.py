@@ -336,6 +336,72 @@ class RuntimeNamespace:
             return self._children.get(parts[0])
         child = self._children.get(parts[0])
         return child.get_child(parts[1]) if child and len(parts) > 1 else None
+
+class CustomFormatter():
+    def __init__(self, fmt):
+        self.fmt = fmt
+        def format(self, record):
+            return self.fmt.format(record.__dict__)
+        self.format = format.__get__(self, CustomFormatter)
+    
+    def __get__(self, instance, owner):
+        return self.format
+    
+    def __set__(self, instance, value):
+        self.fmt = value
+
+def setup_logger(name):
+    logger = logging.getLogger(name)
+    logger.setLevel(logging.DEBUG)
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.DEBUG)
+    ch.setFormatter(CustomFormatter() if name == 'EventBus' else logging.Formatter.basicConfig())
+    logger.addHandler(ch)
+    return logger
+
+Logger = setup_logger(__name__)
+
+def log(level=logging.INFO):
+    def decorator(func):
+        @wraps(func)
+        async def async_wrapper(*args, **kwargs):
+            Logger.log(level, f"Executing {func.__name__} with args: {args}, kwargs: {kwargs}")
+            try:
+                result = await func(*args, **kwargs)
+                Logger.log(level, f"Completed {func.__name__} with result: {result}")
+                return result
+            except Exception as e:
+                Logger.exception(f"Error in {func.__name__}: {str(e)}")
+                raise
+
+        @wraps(func)
+        def sync_wrapper(*args, **kwargs):
+            Logger.log(level, f"Executing {func.__name__} with args: {args}, kwargs: {kwargs}")
+            try:
+                result = func(*args, **kwargs)
+                Logger.log(level, f"Completed {func.__name__} with result: {result}")
+                return result
+            except Exception as e:
+                Logger.exception(f"Error in {func.__name__}: {str(e)}")
+                raise
+
+        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
+    return decorator
+def bench(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        if not getattr(sys, 'bench', True):
+            return await func(*args, **kwargs)
+        start_time = time.perf_counter()
+        try:
+            result = await func(*args, **kwargs)
+            end_time = time.perf_counter()
+            Logger.info(f"{func.__name__} executed in {end_time - start_time:.4f} seconds")
+            return result
+        except Exception as e:
+            Logger.exception(f"Error in {func.__name__}: {str(e)}")
+            raise
+    return wrapper
 #------------------------------------------------------------------------------
 # Type Definitions
 #------------------------------------------------------------------------------
@@ -710,72 +776,6 @@ def handle_errors(func):
 
 EventBus = EventBus('EventBus')
 
-class CustomFormatter():
-    def __init__(self, fmt):
-        self.fmt = fmt
-        def format(self, record):
-            return self.fmt.format(record.__dict__)
-        self.format = format.__get__(self, CustomFormatter)
-    
-    def __get__(self, instance, owner):
-        return self.format
-    
-    def __set__(self, instance, value):
-        self.fmt = value
-
-def setup_logger(name):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(CustomFormatter() if name == 'EventBus' else logging.Formatter.basicConfig())
-    logger.addHandler(ch)
-    return logger
-
-Logger = setup_logger(__name__)
-
-def log(level=logging.INFO):
-    def decorator(func):
-        @wraps(func)
-        async def async_wrapper(*args, **kwargs):
-            Logger.log(level, f"Executing {func.__name__} with args: {args}, kwargs: {kwargs}")
-            try:
-                result = await func(*args, **kwargs)
-                Logger.log(level, f"Completed {func.__name__} with result: {result}")
-                return result
-            except Exception as e:
-                Logger.exception(f"Error in {func.__name__}: {str(e)}")
-                raise
-
-        @wraps(func)
-        def sync_wrapper(*args, **kwargs):
-            Logger.log(level, f"Executing {func.__name__} with args: {args}, kwargs: {kwargs}")
-            try:
-                result = func(*args, **kwargs)
-                Logger.log(level, f"Completed {func.__name__} with result: {result}")
-                return result
-            except Exception as e:
-                Logger.exception(f"Error in {func.__name__}: {str(e)}")
-                raise
-
-        return async_wrapper if asyncio.iscoroutinefunction(func) else sync_wrapper
-    return decorator
-
-def bench(func):
-    @wraps(func)
-    async def wrapper(*args, **kwargs):
-        if not getattr(sys, 'bench', True):
-            return await func(*args, **kwargs)
-        start_time = time.perf_counter()
-        try:
-            result = await func(*args, **kwargs)
-            end_time = time.perf_counter()
-            Logger.info(f"{func.__name__} executed in {end_time - start_time:.4f} seconds")
-            return result
-        except Exception as e:
-            Logger.exception(f"Error in {func.__name__}: {str(e)}")
-            raise
-    return wrapper
 
 @dataclass
 class TaskAtom(Atom): # Tasks are atoms that represent asynchronous potential actions
