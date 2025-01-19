@@ -171,6 +171,8 @@ Morphological Source Code thrives on the interplay of state, logic, and structur
         Together, they define a multi-faceted evolutionary trajectory.
 
 ### Expanding Cognosis with Abraxus DoFs
+    
+    These describe the system's intrinsic stability, ensuring transformations and interactions result in self-consistent layers of logic, retaining coherence even as complexity emerges.
 
 Cognosis hinges on modeling and evolving states of consciousness. DoFs naturally extend this method:
 1. State/Logic Duality for Conscious Entities:

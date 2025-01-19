@@ -48,3 +48,5 @@ if __name__ == "__main__":
             
     my_instance = MyTimedClass()
     my_instance.method1(arg="value")
+    # > MyClass
+    # > MyClass.__dict__

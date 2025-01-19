@@ -13,6 +13,8 @@
 *.scratch
 node_modules/
 *.log
+/.obsidian/*
+.obsidian/
 
 # Ignore system and user-specific files
 .bash_history
