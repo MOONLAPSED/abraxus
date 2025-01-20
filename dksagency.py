@@ -297,4 +297,9 @@ async def run_simulation():
     result = system.simulate(initial_conditions, steps=2)
     print(f"Final state: {result}")
 
-run_simulation()
+def main():
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(run_simulation())
+
+if __name__ == "__main__":
+    main()

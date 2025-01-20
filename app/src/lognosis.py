@@ -24,6 +24,7 @@ import ctypes
 import signal
 import logging
 import tomllib
+import weakref
 import pathlib
 import asyncio
 import inspect
@@ -46,22 +47,32 @@ from io import StringIO
 from array import array
 from pathlib import Path
 from enum import Enum, auto
-from threading import Thread
 from queue import Queue, Empty
 from abc import ABC, abstractmethod
+from threading import Thread, RLock
 from dataclasses import dataclass, field
 from logging import Formatter, StreamHandler
 from collections.abc import Iterable, Mapping
 from concurrent.futures import ThreadPoolExecutor
 from functools import reduce, lru_cache, partial, wraps
-from contextlib import contextmanager, asynccontextmanager
+from contextlib import contextmanager, asynccontextmanager, AbstractContextManager
 from importlib.util import spec_from_file_location, module_from_spec
 from types import SimpleNamespace, ModuleType,  MethodType, FunctionType, CodeType, TracebackType, FrameType
 from typing import (
-    Any, Dict, List, Optional, Union, Callable, TypeVar, Tuple, Generic, Set,
-    Coroutine, Type, NamedTuple, ClassVar, Protocol, runtime_checkable, AsyncIterator
+    Any, Dict, List, Optional, Union, Callable, TypeVar, Tuple, Generic, Set, Iterator, OrderedDict,
+    Coroutine, Type, NamedTuple, ClassVar, Protocol, runtime_checkable, AsyncIterator,
 )
-
+try:
+    from .__init__ import __all__
+    if not __all__:
+        __all__ = []
+    else:
+        __all__ += __file__
+except ImportError:
+    __all__ = []
+    __all__ += __file__
+IS_WINDOWS = os.name == 'nt'
+IS_POSIX = os.name == 'posix'
 # Configure logger
 logger = logging.getLogger("lognosis")
 logger.setLevel(logging.DEBUG)
