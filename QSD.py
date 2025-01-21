@@ -196,104 +196,14 @@ def load_files_as_models(root_dir: pathlib.Path, file_extensions: List[str]) -> 
                 models[model_name] = instance
                 sys.modules[model_name] = instance
     return models
-def mapper(mapping_description: Mapping, input_data: Dict[str, Any]):
-    def transform(xform, value):
-        if callable(xform):
-            return xform(value)
-        elif isinstance(xform, Mapping):
-            return {k: transform(v, value) for k, v in xform.items()}
-        else:
-            raise ValueError(f"Invalid transformation: {xform}")
-    def get_value(key):
-        if isinstance(key, str) and key.startswith(":"):
-            return input_data.get(key[1:])
-        return input_data.get(key)
-    def process_mapping(mapping_description):
-        result = {}
-        for key, xform in mapping_description.items():
-            if isinstance(xform, str):
-                value = get_value(xform)
-                result[key] = value
-            elif isinstance(xform, Mapping):
-                if "key" in xform:
-                    value = get_value(xform["key"])
-                    if "xform" in xform:
-                        result[key] = transform(xform["xform"], value)
-                    elif "xf" in xform:
-                        if isinstance(value, list):
-                            transformed = [xform["xf"](v) for v in value]
-                            if "f" in xform:
-                                result[key] = xform["f"](transformed)
-                            else:
-                                result[key] = transformed
-                        else:
-                            result[key] = xform["xf"](value)
-                    else:
-                        result[key] = value
-                else:
-                    result[key] = process_mapping(xform)
-            else:
-                result[key] = xform
-        return result
-    return process_mapping(mapping_description)
 
 version = '0.4.20'
 log_module_info(
-    "lognosis.py",
+    "cognosis.py",
     {"id": "USER", "version": f"{version}"},
     {"type": "module", "import_time": datetime.datetime.now()},
     ["main", "asyncio.main"],
 )
-#---------------------------------------------------------------------------
-# BaseModel (no-copy immutable dataclasses for data models)
-#---------------------------------------------------------------------------
-@dataclass(frozen=True)
-class BaseModel:
-    __slots__ = ('__dict__', '__weakref__')
-    def __init__(self, **data):
-        for name, value in data.items():
-            setattr(self, name, value)
-    def __post_init__(self):
-        for field_name, expected_type in self.__annotations__.items():
-            actual_value = getattr(self, field_name)
-            if not isinstance(actual_value, expected_type):
-                raise TypeError(f"Expected {expected_type} for {field_name}, got {type(actual_value)}")
-            validator = getattr(self.__class__, f'validate_{field_name}', None)
-            if validator:
-                validator(self, actual_value)
-    @classmethod
-    def create(cls, **kwargs):
-        return cls(**kwargs)
-    def dict(self):
-        return {name: getattr(self, name) for name in self.__annotations__}
-    def __repr__(self):
-        attrs = ', '.join(f"{name}={getattr(self, name)!r}" for name in self.__annotations__)
-        return f"{self.__class__.__name__}({attrs})"
-    def __str__(self):
-        return f"{self.__class__.__name__}({', '.join(f'{name}={value!r}' for name, value in self.dict().items())})"
-    def clone(self):
-        return self.__class__(**self.dict())
-def frozen(cls): # decorator
-    original_setattr = cls.__setattr__
-    def __setattr__(self, name, value):
-        if hasattr(self, name):
-            raise AttributeError(f"Cannot modify frozen attribute '{name}'")
-        original_setattr(self, name, value)
-    cls.__setattr__ = __setattr__
-    return cls
-def validate(validator: Callable[[Any], None]):
-    def decorator(func):
-        @wraps(func)
-        def wrapper(self, value):
-            return validator(value)
-        return wrapper
-    return decorator
-class FileModel(BaseModel):
-    file_name: str
-    file_content: str
-    def save(self, directory: pathlib.Path):
-        with (directory / self.file_name).open('w') as file:
-            file.write(self.file_content)
 @frozen
 class Module(BaseModel):
     file_path: pathlib.Path
@@ -756,6 +666,55 @@ class KnowledgeDomain:
                 if metadata:
                     domain.add_module(metadata.module_name, metadata)
         return domain
+    def _load_content(self, path: Path, use_mmap: bool = True) -> str:
+        if use_mmap:
+            with path.open("r+b") as f, mmap.mmap(f.fileno(), length=0, access=mmap.ACCESS_READ) as m:
+                return m.read().decode("utf-8", errors="ignore")
+        else:
+            return path.read_text(encoding="utf-8", errors="ignore")
+
+    def _should_skip(self, path: Path) -> bool:
+        return any(d in path.parts for d in self.excluded_dirs)
+
+    def build_index(self) -> None:
+        self.module_cache_dir.mkdir(exist_ok=True)
+        modules = []
+        for path in self.base_dir.rglob("*.py"):
+            if not self._should_skip(path):
+                try:
+                    modules.append((path, self._load_content(path)))
+                except Exception as e:
+                    logging.error(f"Failed to read {path}: {e}")
+        with self.index_path.open("wb") as f:
+            pickle.dump(modules, f)
+
+    def _load_index(self) -> List[Tuple[Path, str]]:
+        with self.index_path.open("rb") as f:
+            return pickle.load(f)
+
+    def start_runtime(self) -> None:
+        self.build_index()
+        index = self._load_index()
+        logging.info(f"Loaded {len(index)} modules into the runtime cache.")
+
+    def fetch_module(self, name: str) -> Optional[str]:
+        for path, content in self._load_index():
+            if name in path.name:
+                return content
+        return None
+
+    def execute_module(self, name: str) -> None:
+        content = self.fetch_module(name)
+        if content:
+            code = compile(content, filename=name, mode="exec")
+            exec(code, {})
+
+    def map_over_index(self, mapper_func: Callable[[Path, str], Any]) -> List[Any]:
+        results = []
+        index = self._load_index()
+        for path, content in index:
+            results.append(mapper_func(path, content))
+        return results
 
 class IndexLayer:
     def __init__(self, runtime: 'ScalableReflectiveRuntime'):
@@ -778,7 +737,7 @@ class IndexLayer:
     def query(self, keyword: str) -> Set[str]:
         return self.index.get(keyword.lower(), set())
 class ModuleIndex:
-    def __init__(self, max_cache_size: int = 1000):
+    def __init__(self, max_cache_size: int = 100000):
         self.index: Dict[str, ModuleMetadata] = {}
         self.cache = OrderedDict()  # LRU cache for loaded modules
         self.max_cache_size = max_cache_size
@@ -800,6 +759,22 @@ class ModuleIndex:
                     del sys.modules[oldest_module.__name__]
 
             self.cache[module_name] = module
+
+    def _profile_module(self, metadata: ModuleMetadata):
+        """Automatically profile the module content."""
+        profiler = cProfile.Profile()
+        profiler.enable()
+        self.load_module_content(metadata.module_name)
+        profiler.disable()
+        self._print_profile_data(metadata.module_name)
+
+    def _print_profile_data(self, module_name):
+        s = StringIO()
+        sortby = 'cumulative'
+        ps = pstats.Stats(self.profiler, stream=s).sort_stats(sortby)
+        ps.print_stats()
+        profile_data = s.getvalue()
+        logging.info(f"Profile data for {module_name}: \n{profile_data}")
 
 class BaseComposable(ABC):
     """

@@ -1,37 +1,80 @@
 from __future__ import annotations
-from dataclasses import dataclass, field
-import logging
-import math
-from math import sqrt
-import random
-import json
-import cmath
-from collections import namedtuple
-from functools import reduce
-from operator import mul
-import weakref
-import gc
-import ctypes
-import enum
-from enum import StrEnum, auto
-from typing import TypeVar, Dict, Set, Optional, Any, Union, Callable, Iterator, Mapping, List
-from dataclasses import dataclass, field, asdict
-import threading
-import mmap
-import pathlib
-from pathlib import Path
-import hashlib
-from abc import ABC, abstractmethod
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+#------------------------------------------------------------------------------
+# Standard Library Imports - 3.13 std libs **ONLY**
+#------------------------------------------------------------------------------
+import re
 import os
+import io
+import dis
 import sys
-import importlib.util
-from functools import wraps, lru_cache
-import logging
-from concurrent.futures import ThreadPoolExecutor
-from queue import Queue
+import ast
+import time
+import site
+import mmap
+import json
+import uuid
+import cmath
+import shlex
+import socket
+import struct
+import shutil
 import pickle
-from collections import OrderedDict
-
+import ctypes
+import logging
+import tomllib
+import pathlib
+import asyncio
+import inspect
+import hashlib
+import tempfile
+import platform
+import traceback
+import functools
+import linecache
+import importlib
+import threading
+import subprocess
+import tracemalloc
+import http.server
+import collections
+from math import sqrt
+from array import array
+from pathlib import Path
+from enum import Enum, auto, IntEnum, StrEnum, Flag
+from collections.abc import Iterable, Mapping
+from datetime import datetime
+from queue import Queue, Empty
+from abc import ABC, abstractmethod
+from functools import reduce, lru_cache, partial, wraps
+from dataclasses import dataclass, field
+from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager, asynccontextmanager
+from importlib.util import spec_from_file_location, module_from_spec
+from types import SimpleNamespace, ModuleType,  MethodType, FunctionType, CodeType, TracebackType, FrameType
+from typing import (
+    Any, Dict, List, Optional, Union, Callable, TypeVar, Tuple, Generic, Set, OrderedDict,
+    Coroutine, Type, NamedTuple, ClassVar, Protocol, runtime_checkable, AsyncIterator, Iterator
+)
+try:
+    from .__init__ import __all__
+    if not __all__:
+        __all__ = []
+    else:
+        __all__ += __file__
+except ImportError:
+    __all__ = []
+    __all__ += __file__
+IS_WINDOWS = os.name == 'nt'
+IS_POSIX = os.name == 'posix'
+if IS_WINDOWS:
+    from ctypes import windll
+    from ctypes import wintypes
+    from ctypes.wintypes import HANDLE, DWORD, LPWSTR, LPVOID, BOOL
+    from pathlib import PureWindowsPath
+    def set_process_priority(priority: int):
+        windll.kernel32.SetPriorityClass(wintypes.HANDLE(-1), priority)
 # === Core Classes and Utilities ===
 
 @dataclass(frozen=True)
