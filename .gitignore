@@ -7,6 +7,8 @@
 /kb/*
 /kb/assets/*
 /sql/*
+/KnowledgeBase/*
+filesystem_metadata.json
 
 # User-defined rules below
 /.scratch/*

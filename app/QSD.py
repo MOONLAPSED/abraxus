@@ -204,21 +204,6 @@ log_module_info(
     {"type": "module", "import_time": datetime.datetime.now()},
     ["main", "asyncio.main"],
 )
-@frozen
-class Module(BaseModel):
-    file_path: pathlib.Path
-    module_name: str
-    @validate(lambda x: x.endswith('.py'))
-    def validate_file_path(self, value):
-        return value
-    @validate(lambda x: x.isidentifier())
-    def validate_module_name(self, value):
-        return value
-    @frozen
-    def __init__(self, file_path: pathlib.Path, module_name: str):
-        super().__init__(file_path=file_path, module_name=module_name)
-        self.file_path = file_path
-        self.module_name = module_name
 def create_model_from_file(file_path: pathlib.Path):
     try:
         with file_path.open('r', encoding='utf-8', errors='ignore') as file:
