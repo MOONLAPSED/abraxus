@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f8f9fa"/>
+  
+  <!-- Title -->
+  <text x="400" y="40" font-family="Arial" font-size="24" text-anchor="middle" font-weight="bold">ByteWord Self-Replicating System</text>
+  
+  <!-- ByteWord Structure Legend -->
+  <rect x="50" y="80" width="200" height="120" rx="5" fill="#e6f7ff" stroke="#1890ff" stroke-width="2"/>
+  <text x="150" y="100" font-family="Arial" font-size="16" text-anchor="middle" font-weight="bold">ByteWord Structure</text>
+  
+  <!-- ByteWord Bit Diagram -->
+  <rect x="70" y="120" width="160" height="40" fill="#fff" stroke="#000" stroke-width="1"/>
+  <line x1="70" y1="120" x2="70" y2="160" stroke="#000" stroke-width="1"/>
+  <line x1="150" y1="120" x2="150" y2="160" stroke="#000" stroke-width="1"/>
+  <line x1="190" y1="120" x2="190" y2="160" stroke="#000" stroke-width="1"/>
+  <line x1="210" y1="120" x2="210" y2="160" stroke="#000" stroke-width="1"/>
+  <line x1="230" y1="120" x2="230" y2="160" stroke="#000" stroke-width="1"/>
+  
+  <text x="110" y="145" font-family="Courier" font-size="16" text-anchor="middle">T (4 bits)</text>
+  <text x="170" y="145" font-family="Courier" font-size="16" text-anchor="middle">V (3)</text>
+  <text x="220" y="145" font-family="Courier" font-size="16" text-anchor="middle">C</text>
+  
+  <text x="110" y="175" font-family="Arial" font-size="12" text-anchor="middle">State/Data</text>
+  <text x="170" y="175" font-family="Arial" font-size="12" text-anchor="middle">Morphism</text>
+  <text x="220" y="175" font-family="Arial" font-size="12" text-anchor="middle">Control</text>
+  
+  <!-- Self-Replication Pattern -->
+  <rect x="300" y="80" width="450" height="200" rx="5" fill="#f6ffed" stroke="#52c41a" stroke-width="2"/>
+  <text x="525" y="100" font-family="Arial" font-size="16" text-anchor="middle" font-weight="bold">Self-Replication Pattern (Simple Quine)</text>
+  
+  <!-- Template ByteWord -->
+  <rect x="350" y="130" width="100" height="100" rx="5" fill="#d9f7be" stroke="#389e0d" stroke-width="2"/>
+  <text x="400" y="150" font-family="Arial" font-size="14" text-anchor="middle">Template</text>
+  <text x="400" y="170" font-family="Courier" font-size="14" text-anchor="middle">0b1010_0101</text>
+  <text x="400" y="190" font-family="Arial" font-size="12" text-anchor="middle">T=10, V=2, C=1</text>
+  <text x="400" y="210" font-family="Arial" font-size="12" text-anchor="middle">Points to: Copy</text>
+  
+  <!-- Copy ByteWord -->
+  <rect x="550" y="130" width="100" height="100" rx="5" fill="#d9f7be" stroke="#389e0d" stroke-width="2"/>
+  <text x="600" y="150" font-family="Arial" font-size="14" text-anchor="middle">Copy</text>
+  <text x="600" y="170" font-family="Courier" font-size="14" text-anchor="middle">0b1100_0011</text>
+  <text x="600" y="190" font-family="Arial" font-size="12" text-anchor="middle">T=12, V=1, C=1</text>
+  <text x="600" y="210" font-family="Arial" font-size="12" text-anchor="middle">Points to: Builder</text>
+  
+  <!-- Builder ByteWord -->
+  <rect x="450" y="130" width="100" height="100" rx="5" fill="#d9f7be" stroke="#389e0d" stroke-width="2"/>
+  <text x="500" y="150" font-family="Arial" font-size="14" text-anchor="middle">Builder</text>
+  <text x="500" y="170" font-family="Courier" font-size="14" text-anchor="middle">0b1110_0111</text>
+  <text x="500" y="190" font-family="Arial" font-size="12" text-anchor="middle">T=14, V=3, C=1</text>
+  <text x="500" y="210" font-family="Arial" font-size="12" text-anchor="middle">Points to: Memory</text>
+  
+  <!-- Arrows -->
+  <line x1="450" y1="180" x2="435" y2="180" stroke="#389e0d" stroke-width="2"/>
+  <polygon points="435,180 440,175 440,185" fill="#389e0d"/>
+  
+  <line x1="550" y1="180" x2="535" y2="180" stroke="#389e0d" stroke-width="2"/>
+  <polygon points="535,180 540,175 540,185" fill="#389e0d"/>
+  
+  <line x1="650" y1="180" x2="665" y2="180" stroke="#389e0d" stroke-width="2" stroke-dasharray="5,3"/>
+  <line x1="665" y1="180" x2="665" y2="240" stroke="#389e0d" stroke-width="2" stroke-dasharray="5,3"/>
+  <line x1="665" y1="240" x2="340" y2="240" stroke="#389e0d" stroke-width="2" stroke-dasharray="5,3"/>
+  <line x1="340" y1="240" x2="340" y2="180" stroke="#389e0d" stroke-width="2" stroke-dasharray="5,3"/>
+  <line x1="340" y1="180" x2="350" y2="180" stroke="#389e0d" stroke-width="2" stroke-dasharray="5,3"/>
+  <polygon points="350,180 345,175 345,185" fill="#389e0d"/>
+  
+  <!-- Process Steps -->
+  <rect x="50" y="300" width="700" height="250" rx="5" fill="#fff0f6" stroke="#eb2f96" stroke-width="2"/>
+  <text x="400" y="325" font-family="Arial" font-size="16" text-anchor="middle" font-weight="bold">Self-Replication Process</text>
+  
+  <!-- Step 1 -->
+  <text x="75" y="360" font-family="Arial" font-size="14" font-weight="bold">Step 1: Templating</text>
+  <text x="100" y="380" font-family="Arial" font-size="12">Template ByteWord activates Builder with its high nibble (T=10)</text>
+  <text x="100" y="400" font-family="Arial" font-size="12">Builder reads Template structure through its morphism selector (V=2)</text>
+  
+  <!-- Step 2 -->
+  <text x="75" y="430" font-family="Arial" font-size="14" font-weight="bold">Step 2: Building</text>
+  <text x="100" y="450" font-family="Arial" font-size="12">Builder allocates new memory cell using its high nibble (T=14)</text>
+  <text x="100" y="470" font-family="Arial" font-size="12">Builder performs copying transformation (V=3) to replicate Template</text>
+  
+  <!-- Step 3 -->
+  <text x="75" y="500" font-family="Arial" font-size="14" font-weight="bold">Step 3: Completion</text>
+  <text x="100" y="520" font-family="Arial" font-size="12">Copy ByteWord points to Builder (T=12) to continue replication cycle</text>
+  <text x="100" y="540" font-family="Arial" font-size="12">Control bit (C=1) keeps all ByteWords in active state during replication</text>
+  
+  <!-- Advanced Morphology Section -->
+  <rect x="400" y="350" width="320" height="180" rx="5" fill="#f9f0ff" stroke="#722ed1" stroke-width="2"/>
+  <text x="560" y="370" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold">Extended V/C Morphology</text>
+  
+  <!-- Standard vs Extended diagram -->
+  <rect x="420" y="390" width="120" height="40" fill="#fff" stroke="#000" stroke-width="1"/>
+  <line x1="420" y1="390" x2="420" y2="430" stroke="#000" stroke-width="1"/>
+  <line x1="480" y1="390" x2="480" y2="430" stroke="#000" stroke-width="1"/>
+  <line x1="510" y1="390" x2="510" y2="430" stroke="#000" stroke-width="1"/>
+  <line x1="540" y1="390" x2="540" y2="430" stroke="#000" stroke-width="1"/>
+  
+  <text x="450" y="415" font-family="Courier" font-size="12" text-anchor="middle">T (4)</text>
+  <text x="495" y="415" font-family="Courier" font-size="12" text-anchor="middle">V (3)</text>
+  <text x="525" y="415" font-family="Courier" font-size="12" text-anchor="middle">C</text>
+  <text x="450" y="445" font-family="Arial" font-size="10" text-anchor="middle">Standard</text>
+  
+  <!-- Extended version -->
+  <rect x="420" y="460" width="120" height="40" fill="#fff" stroke="#722ed1" stroke-width="1"/>
+  <line x1="420" y1="460" x2="420" y2="500" stroke="#722ed1" stroke-width="1"/>
+  <line x1="480" y1="460" x2="480" y2="500" stroke="#722ed1" stroke-width="1"/>
+  <line x1="500" y1="460" x2="500" y2="500" stroke="#722ed1" stroke-width="1"/>
+  <line x1="520" y1="460" x2="520" y2="500" stroke="#722ed1" stroke-width="1"/>
+  <line x1="540" y1="460" x2="540" y2="500" stroke="#722ed1" stroke-width="1"/>
+  
+  <text x="450" y="485" font-family="Courier" font-size="12" text-anchor="middle">T (4)</text>
+  <text x="490" y="485" font-family="Courier" font-size="12" text-anchor="middle">V_</text>
+  <text x="510" y="485" font-family="Courier" font-size="12" text-anchor="middle">V</text>
+  <text x="530" y="485" font-family="Courier" font-size="12" text-anchor="middle">_C</text>
+  <text x="450" y="515" font-family="Arial" font-size="10" text-anchor="middle">Extended</text>
+  
+  <!-- Extended explanation -->
+  <text x="580" y="405" font-family="Arial" font-size="11">With Extended Morphology:</text>
+  <text x="590" y="425" font-family="Arial" font-size="11">• V_ (1 bit): Pointer indicator</text>
+  <text x="590" y="445" font-family="Arial" font-size="11">• V (2 bits): Transform type</text>
+  <text x="590" y="465" font-family="Arial" font-size="11">• _C (1 bit): Extended control</text>
+  <text x="580" y="485" font-family="Arial" font-size="11">Allows 4 transform types</text>
+  <text x="580" y="505" font-family="Arial" font-size="11">with explicit pointer status</text>
+</svg>

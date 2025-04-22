@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+  <!-- Background -->
+  <rect width="800" height="600" fill="#f5f5f5"/>
+  
+  <!-- Title -->
+  <text x="400" y="40" font-family="Arial" font-size="24" text-anchor="middle" font-weight="bold">ByteWord Self-Replicating Pattern (Quine)</text>
+  
+  <!-- ByteWord Structure Legend -->
+  <rect x="50" y="80" width="700" height="60" rx="5" fill="#e0e0e0" stroke="#333" stroke-width="1"/>
+  <text x="400" y="105" font-family="Arial" font-size="14" text-anchor="middle" font-weight="bold">ByteWord Structure</text>
+  <text x="70" y="125" font-family="Courier New" font-size="16">T T T T | V V V C  where: T=state/data (4 bits), V=morphism selector (3 bits), C=control bit (1 bit)</text>
+  
+  <!-- Cycle Step 1 -->
+  <g transform="translate(100, 180)">
+    <rect x="0" y="0" width="600" height="120" rx="5" fill="#d1e8ff" stroke="#333" stroke-width="1"/>
+    <text x="300" y="25" font-family="Arial" font-size="16" text-anchor="middle" font-weight="bold">Step 1: Initial Quine Seed (3 ByteWords)</text>
+    
+    <!-- ByteWord A -->
+    <g transform="translate(80, 60)">
+      <rect x="0" y="0" width="120" height="40" rx="5" fill="#fff" stroke="#0066cc" stroke-width="2"/>
+      <text x="60" y="25" font-family="Courier New" font-size="16" text-anchor="middle">0010|1001</text>
+      <text x="60" y="-10" font-family="Arial" font-size="14" text-anchor="middle">ByteWord A (41)</text>
+      <text x="60" y="60" font-family="Arial" font-size="12" text-anchor="middle">Points to B, Copy Transform</text>
+    </g>
+    
+    <!-- ByteWord B -->
+    <g transform="translate(280, 60)">
+      <rect x="0" y="0" width="120" height="40" rx="5" fill="#fff" stroke="#0066cc" stroke-width="2"/>
+      <text x="60" y="25" font-family="Courier New" font-size="16" text-anchor="middle">0011|0101</text>
+      <text x="60" y="-10" font-family="Arial" font-size="14" text-anchor="middle">ByteWord B (53)</text>
+      <text x="60" y="60" font-family="Arial" font-size="12" text-anchor="middle">Points to C, Increment Transform</text>
+    </g>
+    
+    <!-- ByteWord C -->
+    <g transform="translate(480, 60)">
+      <rect x="0" y="0" width="120" height="40" rx="5" fill="#fff" stroke="#0066cc" stroke-width="2"/>
+      <text x="60" y="25" font-family="Courier New" font-size="16" text-anchor="middle">0001|0001</text>
+      <text x="60" y="-10" font-family="Arial" font-size="14" text-anchor="middle">ByteWord C (17)</text>
+      <text x="60" y="60" font-family="Arial" font-size="12" text-anchor="middle">Points to A, Toggle Control</text>
+    </g>
+    
+    <!-- Arrows -->
+    <path d="M200,60 L280,60" stroke="#333" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)"/>
+    <path d="M400,60 L480,60" stroke="#333" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)"/>
+    <path d="M540,90 C580,130 20,130 80,90" stroke="#333" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)"/>
+  </g>
+  
+  <!-- Cycle Step 2 -->
+  <g transform="translate(100, 330)">
+    <rect x="0" y="0" width="600" height="120" rx="5" fill="#d1ffe8" stroke="#333" stroke-width="1"/>
+    <text x="300" y="25" font-family="Arial" font-size="16" text-anchor="middle" font-weight="bold">Step 2: Replication (Creating ByteWords D, E, F)</text>
+    
+    <!-- Original ByteWords (now smaller) -->
+    <g transform="translate(30, 60)">
+      <rect x="0" y="0" width="90" height="30" rx="5" fill="#fff" stroke="#666" stroke-width="1"/>
+      <text x="45" y="20" font-family="Courier New" font-size="12" text-anchor="middle">0010|1001</text>
+      <text x="45" y="-5" font-family="Arial" font-size="10" text-anchor="middle">A</text>
+    </g>
+    
+    <g transform="translate(140, 60)">
+      <rect x="0" y="0" width="90" height="30" rx="5" fill="#fff" stroke="#666" stroke-width="1"/>
+      <text x="45" y="20" font-family="Courier New" font-size="12" text-anchor="middle">0011|0101</text>
+      <text x="45" y="-5" font-family="Arial" font-size="10" text-anchor="middle">B</text>
+    </g>
+    
+    <g transform="translate(250, 60)">
+      <rect x="0" y="0" width="90" height="30" rx="5" fill="#fff" stroke="#666" stroke-width="1"/>
+      <text x="45" y="20" font-family="Courier New" font-size="12" text-anchor="middle">0001|0001</text>
+      <text x="45" y="-5" font-family="Arial" font-size="10" text-anchor="middle">C</text>
+    </g>
+    
+    <!-- New ByteWords -->
+    <g transform="translate(400, 60)">
+      <rect x="0" y="0" width="90" height="30" rx="5" fill="#fff" stroke="#cc0066" stroke-width="2"/>
+      <text x="45" y="20" font-family="Courier New" font-size="12" text-anchor="middle">0100|1001</text>
+      <text x="45" y="-5" font-family="Arial" font-size="10" text-anchor="middle">D (copy of A)</text>
+    </g>
+    
+    <g transform="translate(500, 60)">
+      <rect x="0" y="0" width="90" height="30" rx="5" fill="#fff" stroke="#cc0066" stroke-width="2"/>
+      <text x="45" y="20" font-family="Courier New" font-size="12" text-anchor="middle">0101|0101</text>
+      <text x="45" y="-5" font-family="Arial" font-size="10" text-anchor="middle">E (copy of B)</text>
+    </g>
+    
+    <!-- Arrow for replication -->
+    <path d="M295,60 C320,40 350,40 400,60" stroke="#cc0066" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)" stroke-dasharray="5,3"/>
+    <text x="350" y="30" font-family="Arial" font-size="12" text-anchor="middle" fill="#cc0066">Replication</text>
+  </g>
+  
+  <!-- Cycle Step 3 -->
+  <g transform="translate(100, 470)">
+    <rect x="0" y="0" width="600" height="100" rx="5" fill="#ffd1e8" stroke="#333" stroke-width="1"/>
+    <text x="300" y="25" font-family="Arial" font-size="16" text-anchor="middle" font-weight="bold">Step 3: Complete Replication Cycle</text>
+    
+    <!-- Two separate cycles -->
+    <g transform="translate(150, 60)">
+      <circle cx="0" cy="0" r="30" fill="none" stroke="#0066cc" stroke-width="2"/>
+      <text x="0" y="0" font-family="Arial" font-size="12" text-anchor="middle">A-B-C</text>
+      <text x="0" y="55" font-family="Arial" font-size="12" text-anchor="middle" fill="#0066cc">Original Cycle</text>
+    </g>
+    
+    <g transform="translate(450, 60)">
+      <circle cx="0" cy="0" r="30" fill="none" stroke="#cc0066" stroke-width="2"/>
+      <text x="0" y="0" font-family="Arial" font-size="12" text-anchor="middle">D-E-F</text>
+      <text x="0" y="55" font-family="Arial" font-size="12" text-anchor="middle" fill="#cc0066">New Cycle</text>
+    </g>
+    
+    <!-- Arrow showing replication -->
+    <path d="M180,60 L420,60" stroke="#333" stroke-width="1.5" fill="none" marker-end="url(#arrowhead)"/>
+    <text x="300" y="50" font-family="Arial" font-size="14" text-anchor="middle">Replication Complete</text>
+  </g>
+  
+  <!-- Arrowhead marker -->
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="7" refX="9" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#333"/>
+    </marker>
+  </defs>
+</svg>

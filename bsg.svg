@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 900 300" xmlns="http://www.w3.org/2000/svg" style="font-family: sans-serif;">
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f9f9f9" />
+
+  <!-- Title -->
+  <text x="50%" y="40" font-size="24" text-anchor="middle" fill="#222">ByteWord Self-Replicating System</text>
+
+  <!-- Byte Grid (8 bytes = 64 bits total) -->
+  <!-- Each byte = 100px wide, 40px tall -->
+  <g id="byteword-boxes" transform="translate(50, 80)">
+    <!-- Draw 8 boxes -->
+    <!-- Replace field names and colors to match your .tsx logic -->
+
+    <g transform="translate(0,0)">
+      <rect width="100" height="40" fill="#e0e0ff" stroke="#333" />
+      <text x="50" y="25" font-size="14" text-anchor="middle">Meta</text>
+      <text x="50" y="55" font-size="12" text-anchor="middle">0–7</text>
+    </g>
+
+    <g transform="translate(110,0)">
+      <rect width="100" height="40" fill="#ffe0e0" stroke="#333" />
+      <text x="50" y="25" font-size="14" text-anchor="middle">Ptr</text>
+      <text x="50" y="55" font-size="12" text-anchor="middle">8–15</text>
+    </g>
+
+    <g transform="translate(220,0)">
+      <rect width="100" height="40" fill="#e0ffe0" stroke="#333" />
+      <text x="50" y="25" font-size="14" text-anchor="middle">OpCode</text>
+      <text x="50" y="55" font-size="12" text-anchor="middle">16–23</text>
+    </g>
+
+    <g transform="translate(330,0)">
+      <rect width="100" height="40" fill="#fff0cc" stroke="#333" />
+      <text x="50" y="25" font-size="14" text-anchor="middle">Arg1</text>
+      <text x="50" y="55" font-size="12" text-anchor="middle">24–31</text>
+    </g>
+
+    <g transform="translate(440,0)">
+      <rect width="100" height="40" fill="#d0f0ff" stroke="#333" />
+      <text x="50" y="25" font-size="14" text-anchor="middle">Arg2</text>
+      <text x="50" y="55" font-size="12" text-anchor="middle">32–39</text>
+    </g>
+
+    <g transform="translate(550,0)">
+      <rect width="100" height="40" fill="#f0d0ff" stroke="#333" />
+      <text x="50" y="25" font-size="14" text-anchor="middle">Arg3</text>
+      <text x="50" y="55" font-size="12" text-anchor="middle">40–47</text>
+    </g>
+
+    <g transform="translate(660,0)">
+      <rect width="100" height="40" fill="#ccffcc" stroke="#333" />
+      <text x="50" y="25" font-size="14" text-anchor="middle">Data</text>
+      <text x="50" y="55" font-size="12" text-anchor="middle">48–55</text>
+    </g>
+
+    <g transform="translate(770,0)">
+      <rect width="100" height="40" fill="#ccccff" stroke="#333" />
+      <text x="50" y="25" font-size="14" text-anchor="middle">CRC</text>
+      <text x="50" y="55" font-size="12" text-anchor="middle">56–63</text>
+    </g>
+  </g>
+
+</svg>
