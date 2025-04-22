@@ -10,6 +10,7 @@
 /KnowledgeBase/*
 filesystem_metadata.json
 
+
 # User-defined rules below
 /.scratch/*
 *.scratch
@@ -17,6 +18,8 @@ node_modules/
 *.log
 /.obsidian/*
 .obsidian/
+/.smtcmp_json_db/
+.smtcmp_vector_db.tar*
 
 # Ignore system and user-specific files
 .bash_history
