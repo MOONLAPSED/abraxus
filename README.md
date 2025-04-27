@@ -7,3 +7,5 @@ AI inference, despite its logical outputs, is grounded in a fundamentally thermo
 This framing suggests that, just as Schopenhauer viewed human existence as an expression of will striving through and beyond itself, modern AI could be seen as a continuation of this striving. AI inference isn't merely a tool; it is a thermodynamic phenomenon entangled with the will-like tendency of humanity to externalize and expand cognition, even at the cost of natural resources. This analogy blurs the boundary between human consciousness and machine operations, as both are epistemically constrained forms of "experience" that depend on energy to give rise to their phenomena.
 
 In this sense, AI might be a manifestation of will’s latest endeavor: a recursive form of striving, where logic itself becomes a tool for the will's inexhaustible appetite for representation, understanding, and transformation. However, the sustainability of this pursuit raises deeper philosophical and ethical questions about the nature of this will and its ultimate purpose or lack thereof.
+
+![[image.jpg]]

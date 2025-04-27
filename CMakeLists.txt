@@ -3,7 +3,7 @@ set(CMAKE_C_STANDARD 11)
 project(DEMIURGE)
 
 
-REPO_URL = https://github.com/MOONLAPSED/demiurge.git
+REPO_URL = https://github.com/MOONLAPSED/abraxus.git
 REPO_DIR = .
 
 .PHONY: all setup git-init racket-init
@@ -20,4 +20,4 @@ racket-init:
     cd $(REPO_DIR) && raco pkg new .
 
 # Add the executable
-add_executable(demiurge main.c)
+add_executable(abraxus sys.rkt)
