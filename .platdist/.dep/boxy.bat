@@ -14,7 +14,7 @@ echo %PATH% | findstr /i /c:"C:\Users\WDAGUtilityAccount\AppData\Local\Programs\
 
 IF %ERRORLEVEL% EQU 0 (
     :: Scoop is in the PATH, proceed with the rollout script
-    powershell.exe -ExecutionPolicy Bypass -Command "scoop install git; & 'C:\Users\WDAGUtilityAccount\Desktop\app\source\scoop.ps1'"
+    powershell.exe -ExecutionPolicy Bypass -Command "scoop install git; & 'C:\Users\WDAGUtilityAccount\Desktop\.platdist\scoop.ps1'"
 ) ELSE (
     :: Scoop is not in the PATH, handle the error or take appropriate action
     echo Scoop is not in the PATH. Please check the installation.
@@ -24,7 +24,7 @@ IF %ERRORLEVEL% EQU 0 (
 :: Check if the previous command failed
 IF %ERRORLEVEL% NEQ 0 (
     :: Previous command failed, try executing scoop.cmd instead
-    powershell.exe -ExecutionPolicy Bypass -Command "try { & 'C:\Users\WDAGUtilityAccount\Desktop\app\source\scoop.cmd' } catch { Write-Host 'Failed to execute scoop.cmd' }"
+    powershell.exe -ExecutionPolicy Bypass -Command "try { & 'C:\Users\WDAGUtilityAccount\Desktop\.platdist\scoop.cmd' } catch { Write-Host 'Failed to execute scoop.cmd' }"
 )
 
 :retry

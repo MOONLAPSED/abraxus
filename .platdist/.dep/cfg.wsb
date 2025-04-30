@@ -1,0 +1,23 @@
+<!-- This file contains the configuration for a Windows Sandbox -->
+
+<Configuration>
+    <vGPU>Enable</vGPU>
+    <Networking>Default</Networking>
+    <AudioInput>Enable</AudioInput>
+    <VideoInput>Disable</VideoInput>
+    <PrinterRedirection>Disable</PrinterRedirection>
+    <ClipboardRedirection>Default</ClipboardRedirection>
+    <ProtectedClient>Disable</ProtectedClient>
+    <MemoryInMB>8192</MemoryInMB>
+    <MappedFolders>
+        <MappedFolder>
+            <HostFolder>C:\Users\DEV\Documents\abraxus</HostFolder>
+            <SandboxFolder>C:\Users\WDAGUtilityAccount\Desktop</SandboxFolder>
+            <ReadOnly>false</ReadOnly>
+        </MappedFolder>
+    </MappedFolders>
+    <LogonCommand>
+        <Command>cmd.exe /c start powershell.exe -ExecutionPolicy Bypass -File "C:\Users\WDAGUtilityAccount\Desktop\abraxus\.platdist\provisioner.bat"</Command>
+    </LogonCommand>
+</Configuration>
+# https://github.com/microsoft/WinAppDriver for headless ops
