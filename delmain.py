@@ -785,9 +785,9 @@ def demo():
     frame = CPythonFrame(
         type_ptr=id(str),
         obj_type=str,
-        _value="quantum text",
-        state=QuantumState.SUPERPOSITION
+        _value="quantum text"
     )
+    frame.state = QuantumState.SUPERPOSITION
     
     print(f"Initial state: {frame.state}")
     print(f"Observed value: {frame.observe()}")
