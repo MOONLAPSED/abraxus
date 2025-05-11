@@ -62,9 +62,7 @@ Write-Host "Installing essential packages..."
 $packages = @(
     @{name="vscode"; bucket="extras"},
     @{name="windows-terminal"; bucket="extras"},
-    @{name="uv"; bucket="main"},
-    @{name="notepadplusplus"; bucket="extras"},
-    @{name="python"; bucket="main"}
+    @{name="uv"; bucket="main"}
 )
 
 foreach ($package in $packages) {
@@ -75,45 +73,57 @@ foreach ($package in $packages) {
 Write-Host "Updating all installed applications..."
 scoop update *
 
-# Configure VSCode with necessary extensions and settings
-Write-Host "Configuring VSCode..."
+# Configure Python environment using uv
+Write-Host "Setting up Python environment using uv..."
 
 # Get paths
 $vscodeExePath = Join-Path $env:SCOOP "shims\code.exe"
 $uvPath = Join-Path $env:SCOOP "shims\uv.exe"
-$pythonPath = Join-Path $env:SCOOP "shims\python.exe"
+$workspaceDir = Join-Path $env:USERPROFILE "dev-workspace"
+# "C:\Users\WDAGUtilityAccount\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Scoop Apps\Visual Studio Code.lnk"
 
-# Ensure we use portable python even if it has a different executable path
-if (-not (Test-Path $pythonPath)) {
-    $pythonPath = Join-Path $env:SCOOP "apps\python-portable\current\python.exe"
+# Create workspace directory if it doesn't exist
+if (-not (Test-Path $workspaceDir)) {
+    New-Item -Path $workspaceDir -ItemType Directory -Force | Out-Null
+    Write-Host "Created workspace directory at $workspaceDir"
 }
+
+# Change to workspace directory
+Push-Location $workspaceDir
+
+# Create a Python virtual environment using uv
+if (Test-Path $uvPath) {
+    Write-Host "Creating Python virtual environment using uv..."
+    
+    # This will create a .venv directory with a Python installation
+    & $uvPath venv --seed
+    
+    # Get the path to the Python executable in the virtual environment
+    $pythonVenvPath = Join-Path $workspaceDir ".venv\Scripts\python.exe"
+    
+    # Install some basic packages using uv
+    if (Test-Path $pythonVenvPath) {
+        Write-Host "Installing basic Python packages..."
+        & $uvPath pip install pytest requests black pylint jupyter
+        Write-Host "Python environment setup complete!"
+    } else {
+        Write-Host "Warning: Python virtual environment not created successfully!"
+    }
+} else {
+    Write-Host "Warning: uv executable not found. Skipping Python setup."
+}
+
+# Return to original directory
+Pop-Location
+
+# Configure VSCode with necessary extensions and settings
+Write-Host "Configuring VSCode..."
 
 # Install VSCode extensions
 if (Test-Path $vscodeExePath) {
     Write-Host "Installing VSCode extensions..."
-    # Install extensions with timeout to prevent hanging
-    $timeout = 60 # seconds
-    $job = Start-Job -ScriptBlock { 
-        & $using:vscodeExePath --install-extension ms-python.python --force 
-    }
-    if (Wait-Job $job -Timeout $timeout) {
-        Receive-Job $job
-    } else {
-        Write-Host "Warning: Installing Python extension timed out, but VSCode may still work"
-        Stop-Job $job
-    }
-    Remove-Job $job -Force
-    
-    $job = Start-Job -ScriptBlock { 
-        & $using:vscodeExePath --install-extension ms-python.vscode-pylance --force 
-    }
-    if (Wait-Job $job -Timeout $timeout) {
-        Receive-Job $job
-    } else {
-        Write-Host "Warning: Installing Pylance extension timed out, but VSCode may still work"
-        Stop-Job $job
-    }
-    Remove-Job $job -Force
+    & $vscodeExePath --install-extension ms-python.python --force
+    & $vscodeExePath --install-extension ms-python.vscode-pylance --force
     
     # Create VSCode settings directory if it doesn't exist
     $vscodeDirPath = Join-Path $env:APPDATA "Code\User"
@@ -143,15 +153,19 @@ if (Test-Path $vscodeExePath) {
         }
     }
     
+    # Point VSCode to our uv-managed Python in the virtual environment
+    $pythonVenvPath = Join-Path $workspaceDir ".venv\Scripts\python.exe"
+    
     # Update Python settings
-    $settingsHash["python.defaultInterpreterPath"] = $pythonPath
+    $settingsHash["python.defaultInterpreterPath"] = $pythonVenvPath
     $settingsHash["python.terminal.activateEnvironment"] = $true
     $settingsHash["terminal.integrated.env.windows"] = @{
         "PATH" = "$env:SCOOP\shims;$env:PATH"
     }
+    $settingsHash["python.venvPath"] = $workspaceDir
     
-    # Create an launch.json template in user's home directory to be used as reference
-    $launchDirPath = Join-Path $env:USERPROFILE ".vscode"
+    # Create a launch.json template in the workspace directory
+    $launchDirPath = Join-Path $workspaceDir ".vscode"
     if (-not (Test-Path $launchDirPath)) {
         New-Item -Path $launchDirPath -ItemType Directory -Force | Out-Null
     }
@@ -166,6 +180,8 @@ if (Test-Path $vscodeExePath) {
                 "request" = "launch"
                 "program" = "`${file}"
                 "console" = "integratedTerminal"
+                "justMyCode" = $true
+                "python" = $pythonVenvPath
                 "env" = @{
                     "PATH" = "$env:SCOOP\shims;$env:PATH"
                 }
@@ -175,7 +191,26 @@ if (Test-Path $vscodeExePath) {
     
     $launchContent | Out-File -FilePath $launchPath -Encoding utf8 -Force
     
-    # Convert settings hashtable back to JSON and save
+    # Create a workspace settings directory
+    $workspaceSettingsDir = Join-Path $workspaceDir ".vscode"
+    if (-not (Test-Path $workspaceSettingsDir)) {
+        New-Item -Path $workspaceSettingsDir -ItemType Directory -Force | Out-Null
+    }
+    
+    # Create workspace-specific settings.json
+    $workspaceSettingsPath = Join-Path $workspaceSettingsDir "settings.json"
+    $workspaceSettings = @{
+        "python.defaultInterpreterPath" = $pythonVenvPath
+        "python.analysis.extraPaths" = @("${workspaceDir}\.venv\Lib\site-packages")
+        "python.terminal.activateEnvironment" = $true
+        "python.linting.enabled" = $true
+        "python.linting.pylintEnabled" = $true
+        "python.formatting.provider" = "black"
+    } | ConvertTo-Json -Depth 5
+    
+    $workspaceSettings | Out-File -FilePath $workspaceSettingsPath -Encoding utf8 -Force
+    
+    # Convert global settings hashtable back to JSON and save
     $settingsHash | ConvertTo-Json -Depth 5 | Out-File -FilePath $settingsPath -Encoding utf8 -Force
     
     Write-Host "VSCode configuration completed."
@@ -183,33 +218,74 @@ if (Test-Path $vscodeExePath) {
     Write-Host "Warning: VSCode executable not found. Skipping configuration."
 }
 
-# Setup uv for Python package management
-Write-Host "Configuring uv as Python package manager..."
+# Create helper scripts for Python development with uv
+Write-Host "Creating helper scripts for Python development..."
 if (Test-Path $uvPath) {
-    # Create a batch file that helps configure uv in VSCode terminal
+    # Create a detailed helper batch file for working with uv
     $uvSetupScript = @"
 @echo off
+echo ===== Python Development Environment Setup =====
+echo.
 echo Setting up uv environment in PATH...
 set PATH=$env:SCOOP\shims;%PATH%
-echo uv path: $uvPath
-echo Python path: $pythonPath
+set WORKSPACE_DIR=$workspaceDir
+
 echo.
-echo To use uv in your projects:
-echo 1. Use 'uv venv' to create virtual environments
-echo 2. Use 'uv pip install package_name' to install packages
+echo Python environment information:
+echo - Workspace: %WORKSPACE_DIR%
+echo - uv path: $uvPath
+echo - Python path: %WORKSPACE_DIR%\.venv\Scripts\python.exe
+echo.
+echo Common uv commands:
+echo 1. Create new project:  uv venv --seed my-project
+echo 2. Install package:     uv pip install package_name
+echo 3. Install from file:   uv pip install -r requirements.txt
+echo 4. Run Python:          %WORKSPACE_DIR%\.venv\Scripts\python.exe your_script.py
+echo.
+echo === VSCode is configured to use the Python environment ===
 echo.
 "@
     
-    $uvSetupPath = Join-Path $env:USERPROFILE "setup_uv.bat"
+    $uvSetupPath = Join-Path $env:USERPROFILE "python_dev_setup.bat"
     $uvSetupScript | Out-File -FilePath $uvSetupPath -Encoding ascii -Force
     
-    Write-Host "Created uv setup helper at $uvSetupPath"
+    # Create a simple Python test script in the workspace
+    $testScriptPath = Join-Path $workspaceDir "hello.py"
+    $testScript = @"
+# Simple test script to verify Python environment
+import sys
+import platform
+
+print(f"Python version: {sys.version}")
+print(f"Python executable: {sys.executable}")
+print(f"Platform: {platform.platform()}")
+
+# Try to import installed modules
+try:
+    import requests
+    print("✓ requests module is installed")
+except ImportError:
+    print("✗ requests module is not installed")
+
+try:
+    import pytest
+    print("✓ pytest module is installed")
+except ImportError:
+    print("✗ pytest module is not installed")
+
+print("\nEverything is working! You're ready to start developing with Python.")
+"@
+    
+    $testScript | Out-File -FilePath $testScriptPath -Encoding utf8 -Force
+    
+    Write-Host "Created Python development helpers:"
+    Write-Host "  - Setup guide: $uvSetupPath"
+    Write-Host "  - Test script: $testScriptPath"
 }
 
 # Launch common applications
 Write-Host "Launching common applications..."
 $apps = @(
-    @{path="C:\Windows\System32\notepad.exe"; required=$false},
     @{path="C:\Windows\explorer.exe"; required=$true}
 )
 
@@ -254,10 +330,10 @@ try {
     Start-Process "powershell.exe"
 }
 
-# Launch VSCode as the last step
+# Launch VSCode as the last step with the workspace folder
 if (Test-Path $vscodeExePath) {
-    Write-Host "Launching VSCode..."
-    Start-Process $vscodeExePath
+    Write-Host "Launching VSCode with workspace..."
+    Start-Process $vscodeExePath -ArgumentList "$workspaceDir"
 }
 
 Write-Host "scoop_setup.ps1 script completed successfully."
