@@ -25,7 +25,7 @@ function Install-ScoopPackage {
     $fullPackageName = if ($bucket) { "$bucket/$packageName" } else { $packageName }
     Write-Host "Checking package: $fullPackageName"
     
-    $installed = scoop list | Where-Object { $_.Name -eq $packageName }
+    $installed = scoop list | Where-Object { $_ -match $packageName }
     if ($installed) {
         Write-Host "Package '$fullPackageName' is already installed."
         return $true
@@ -34,6 +34,54 @@ function Install-ScoopPackage {
         scoop install $fullPackageName
         return $?  # Return success status of installation
     }
+}
+
+# Function to find VSCode executable
+function Find-VSCodePath {
+    # Check multiple possible locations
+    $possiblePaths = @(
+        # Check in shims first
+        (Join-Path $env:SCOOP "shims\code.exe"),
+        (Join-Path $env:SCOOP "shims\vscode.exe"),
+        # Check in apps directory
+        (Join-Path $env:SCOOP "apps\vscode\current\Code.exe"),
+        (Join-Path $env:SCOOP "apps\vscode\current\bin\code.cmd"),
+        # Check alternative app name
+        (Join-Path $env:SCOOP "apps\visual-studio-code\current\Code.exe"),
+        (Join-Path $env:SCOOP "apps\visual-studio-code\current\bin\code.cmd")
+    )
+    
+    foreach ($path in $possiblePaths) {
+        if (Test-Path $path) {
+            Write-Host "Found VSCode at: $path"
+            return $path
+        }
+    }
+    
+    # If not found in standard paths, try to find via scoop which
+    try {
+        $scoopPath = scoop which code 2>$null
+        if ($scoopPath -and (Test-Path $scoopPath)) {
+            Write-Host "Found VSCode via scoop which: $scoopPath"
+            return $scoopPath
+        }
+    } catch {
+        Write-Host "Couldn't find VSCode via 'scoop which'"
+    }
+    
+    # Last resort - try to find in PATH
+    try {
+        $cmdPath = Get-Command code -ErrorAction SilentlyContinue
+        if ($cmdPath) {
+            Write-Host "Found VSCode in PATH: $($cmdPath.Source)"
+            return $cmdPath.Source
+        }
+    } catch {
+        Write-Host "Couldn't find VSCode in PATH"
+    }
+    
+    Write-Host "Warning: VSCode executable not found in any expected location"
+    return $null
 }
 
 # Ensure Scoop is in the PATH for this session
@@ -77,10 +125,9 @@ scoop update *
 Write-Host "Setting up Python environment using uv..."
 
 # Get paths
-$vscodeExePath = Join-Path $env:SCOOP "shims\code.exe"
+$vscodeExePath = Find-VSCodePath
 $uvPath = Join-Path $env:SCOOP "shims\uv.exe"
 $workspaceDir = Join-Path $env:USERPROFILE "dev-workspace"
-# "C:\Users\WDAGUtilityAccount\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Scoop Apps\Visual Studio Code.lnk"
 
 # Create workspace directory if it doesn't exist
 if (-not (Test-Path $workspaceDir)) {
@@ -120,10 +167,19 @@ Pop-Location
 Write-Host "Configuring VSCode..."
 
 # Install VSCode extensions
-if (Test-Path $vscodeExePath) {
+if ($vscodeExePath -and (Test-Path $vscodeExePath)) {
     Write-Host "Installing VSCode extensions..."
-    & $vscodeExePath --install-extension ms-python.python --force
-    & $vscodeExePath --install-extension ms-python.vscode-pylance --force
+    
+    # Handle both types of VSCode executables - .exe or .cmd
+    if ($vscodeExePath -match '\.cmd$') {
+        # For .cmd files, we need to use cmd.exe to execute them
+        & cmd.exe /c "$vscodeExePath --install-extension ms-python.python --force"
+        & cmd.exe /c "$vscodeExePath --install-extension ms-python.vscode-pylance --force"
+    } else {
+        # For .exe files, we can execute directly
+        & $vscodeExePath --install-extension ms-python.python --force
+        & $vscodeExePath --install-extension ms-python.vscode-pylance --force
+    }
     
     # Create VSCode settings directory if it doesn't exist
     $vscodeDirPath = Join-Path $env:APPDATA "Code\User"
@@ -206,6 +262,9 @@ if (Test-Path $vscodeExePath) {
         "python.linting.enabled" = $true
         "python.linting.pylintEnabled" = $true
         "python.formatting.provider" = "black"
+        "terminal.integrated.env.windows" = @{
+            "PATH" = "$env:SCOOP\shims;$env:PATH"
+        }
     } | ConvertTo-Json -Depth 5
     
     $workspaceSettings | Out-File -FilePath $workspaceSettingsPath -Encoding utf8 -Force
@@ -331,9 +390,17 @@ try {
 }
 
 # Launch VSCode as the last step with the workspace folder
-if (Test-Path $vscodeExePath) {
+if ($vscodeExePath -and (Test-Path $vscodeExePath)) {
     Write-Host "Launching VSCode with workspace..."
-    Start-Process $vscodeExePath -ArgumentList "$workspaceDir"
+    
+    # Handle both types of VSCode executables - .exe or .cmd
+    if ($vscodeExePath -match '\.cmd$') {
+        # For .cmd files, we need to use cmd.exe to execute them
+        & cmd.exe /c "$vscodeExePath $workspaceDir"
+    } else {
+        # For .exe files, we can execute directly
+        Start-Process $vscodeExePath -ArgumentList "$workspaceDir"
+    }
 }
 
 Write-Host "scoop_setup.ps1 script completed successfully."
