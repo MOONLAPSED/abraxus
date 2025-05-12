@@ -17,6 +17,10 @@ echo [%TIME%] Using Scoop path: %SCOOP% >> "%LOGFILE%"
 set "PATH=%PATH%;%SCOOP_SHIMS%"
 echo [%TIME%] PATH after adding Scoop: %PATH% >> "%LOGFILE%"
 
+:: Persist scoop shims into the user PATH (so any new process sees it)
+echo [%TIME%] Persisting scoop\shims into User PATH... >> "%LOGFILE%"
+setx PATH "%PATH%" >> "%LOGFILE%" 2>&1
+
 :: Check if Scoop is installed
 where scoop >nul 2>&1
 IF %ERRORLEVEL% EQU 0 (
