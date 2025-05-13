@@ -15,6 +15,6 @@
         </MappedFolder>
     </MappedFolders>
     <LogonCommand>
-        <Command>cmd.exe /c start /wait "" "C:\Users\WDAGUtilityAccount\Desktop\abraxus\.platdist\provisioner.bat"</Command>
+        <Command>cmd.exe /c start /wait "" "C:\Users\WDAGUtilityAccount\Desktop\abraxus\platform\provisioner.bat"</Command>
     </LogonCommand>
 </Configuration>
