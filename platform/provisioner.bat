@@ -53,5 +53,5 @@ IF %PS1_RESULT% NEQ 0 (
 )
 
 echo [%TIME%] Success: Provisioning complete. >> "%LOGFILE%"
-start notepad.exe "C:\Users\WDAGUtilityAccount\Desktop\sandbox_log.txt"
+
 exit /b 0
