@@ -1,14 +1,15 @@
-#### public ####
-
-!/kb/assets/pub/*
-
 #### private ####
 
-/kb/*
-/kb/assets/*
 /sql/*
 /KnowledgeBase/*
 filesystem_metadata.json
+/kb/*
+#### public ####
+!/kb/assets/
+!/kb/assets/pub/
+!/kb/assets/pub/*
+!/kb/assets/pub/on cosmological thermodynamic character.md
+
 
 
 # User-defined rules below
