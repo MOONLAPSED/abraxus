@@ -103,6 +103,7 @@ def validate(validator: Callable[[Any], None]):
             return validator(value)
         return wrapper
     return decorator
+@frozen
 class FileModel(BaseModel):
     file_name: str
     file_content: str
@@ -337,30 +338,6 @@ class RuntimeNamespace:
         child = self._children.get(parts[0])
         return child.get_child(parts[1]) if child and len(parts) > 1 else None
 
-class CustomFormatter():
-    def __init__(self, fmt):
-        self.fmt = fmt
-        def format(self, record):
-            return self.fmt.format(record.__dict__)
-        self.format = format.__get__(self, CustomFormatter)
-    
-    def __get__(self, instance, owner):
-        return self.format
-    
-    def __set__(self, instance, value):
-        self.fmt = value
-
-def setup_logger(name):
-    logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.DEBUG)
-    ch.setFormatter(CustomFormatter() if name == 'EventBus' else logging.Formatter.basicConfig())
-    logger.addHandler(ch)
-    return logger
-
-Logger = setup_logger(__name__)
-
 def log(level=logging.INFO):
     def decorator(func):
         @wraps(func)
@@ -592,7 +569,6 @@ The Atom(), our polymorph of object and fcc-apparent at runtime, always represen
 # consistent, assuming it is able to re-instantiated.
 # Enums for type system
 DataType = Enum('DataType', 'INTEGER FLOAT STRING BOOLEAN NONE LIST TUPLE')
-AtomType = Enum('AtomType', 'FUNCTION CLASS MODULE OBJECT', bound=_Atom_)
 AccessLevel = Enum('AccessLevel', 'READ WRITE EXECUTE ADMIN USER')
 QuantumState = Enum('QuantumState', ['SUPERPOSITION', 'ENTANGLED', 'COLLAPSED', 'DECOHERENT'])
 @runtime_checkable

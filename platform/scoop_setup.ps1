@@ -385,14 +385,19 @@ print("\nEverything is working! You're ready to start developing with Python.")
     Write-Host "  - Test script: $testScriptPath" 
     Write-Host "  - VSCode workspace: $workspaceFilePath"
 }
-
+# verify uv/python workspace is in $PATH
+$env:PATH = "$($workspaceDir)\.venv\Scripts;$env:PATH"
+if (-not (Test-Path $pythonVenvPath)) {
+    Write-Error "ERROR: Virtual environment was not correctly created!"
+    exit 1
+}
 # Launch VSCode as the last step with the workspace folder
 if ($vscodeExePath -and (Test-Path $vscodeExePath)) {
     Write-Host "Launching VSCode with workspace..."
     # Use the workspace file instead of just the directory
     $workspaceFilePath = Join-Path $workspaceDir "python-dev.code-workspace"
     if (Test-Path $workspaceFilePath) {
-        Start-Process $vscodeExePath -ArgumentList "$workspaceFilePath"
+        Start-Process $vscodeExePath -ArgumentList "--reuse-window `"$workspaceFilePath`""
     } else {
         Start-Process $vscodeExePath -ArgumentList "$workspaceDir"
     }
