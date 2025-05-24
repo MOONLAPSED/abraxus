@@ -1,0 +1,1 @@
+Python Environment Integration: The VSCode configuration in abraxus points to the Python virtual environment in the volatile dev-workspace (the desktop of the sandbox), so you get the best of both worlds.

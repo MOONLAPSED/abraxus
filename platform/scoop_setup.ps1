@@ -76,15 +76,15 @@ scoop update *
 # Configure Python environment using uv
 Write-Host "Setting up Python environment using uv..."
 
-# Get paths - More robust path detection for VSCode
+# CONSOLIDATED PATH DETECTION FOR VSCODE - Only find it once
 $vscodeExePath = $null
+Write-Host "Locating VSCode installation..."
 
 # Try different potential paths for VSCode
 $potentialVSCodePaths = @(
     (Join-Path $env:SCOOP "shims\code.exe"),
     (Join-Path $env:SCOOP "apps\vscode\current\Code.exe"),
-    (Join-Path $env:SCOOP "apps\vscode-portable\current\Code.exe"),
-    "C:\Users\WDAGUtilityAccount\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Scoop Apps\Visual Studio Code.lnk"
+    (Join-Path $env:SCOOP "apps\vscode-portable\current\Code.exe")
 )
 
 foreach ($path in $potentialVSCodePaths) {
@@ -124,6 +124,11 @@ if (-not $vscodeExePath) {
     }
 }
 
+if (-not $vscodeExePath) {
+    Write-Warning "VSCode executable not found. VSCode configuration and launch will be skipped."
+}
+
+# Set up UV and workspace paths
 $uvPath = (Get-Command uv -ErrorAction SilentlyContinue).Source
 if (-not $uvPath) {
     $uvPath = Join-Path $env:SCOOP "shims\uv.exe"
@@ -140,14 +145,13 @@ if (-not (Test-Path $workspaceDir)) {
 Push-Location $workspaceDir
 
 # Create a Python virtual environment using uv
+$pythonVenvPath = Join-Path $workspaceDir ".venv\Scripts\python.exe"
+
 if (Test-Path $uvPath) {
     Write-Host "Creating Python virtual environment using uv..."
     
     # This will create a .venv directory with a Python installation
     & $uvPath venv --seed
-    
-    # Get the path to the Python executable in the virtual environment
-    $pythonVenvPath = Join-Path $workspaceDir ".venv\Scripts\python.exe"
     
     # Install some basic packages using uv
     if (Test-Path $pythonVenvPath) {
@@ -166,7 +170,6 @@ if (Test-Path $uvPath) {
         
         # Try again with the found path
         & $uvPath venv --seed
-        $pythonVenvPath = Join-Path $workspaceDir ".venv\Scripts\python.exe"
         if (Test-Path $pythonVenvPath) {
             Write-Host "Installing basic Python packages..."
             & $uvPath pip install pytest requests black pylint jupyter
@@ -180,12 +183,12 @@ if (Test-Path $uvPath) {
 # Return to original directory
 Pop-Location
 
-# Configure VSCode with necessary extensions and settings
-Write-Host "Configuring VSCode..."
-
-# Install VSCode extensions
+# Configure VSCode ONLY if we found the executable
 if ($vscodeExePath -and (Test-Path $vscodeExePath)) {
-    Write-Host "Installing VSCode extensions using: $vscodeExePath"
+    Write-Host "Configuring VSCode..."
+    
+    # Install VSCode extensions
+    Write-Host "Installing VSCode extensions..."
     & $vscodeExePath --install-extension ms-python.python --force
     & $vscodeExePath --install-extension ms-python.vscode-pylance --force
     
@@ -216,9 +219,6 @@ if ($vscodeExePath -and (Test-Path $vscodeExePath)) {
             $settingsHash[$property.Name] = $property.Value
         }
     }
-    
-    # Point VSCode to our uv-managed Python in the virtual environment
-    $pythonVenvPath = Join-Path $workspaceDir ".venv\Scripts\python.exe"
     
     # Update Python settings
     $settingsHash["python.defaultInterpreterPath"] = $pythonVenvPath
@@ -255,14 +255,8 @@ if ($vscodeExePath -and (Test-Path $vscodeExePath)) {
     
     $launchContent | Out-File -FilePath $launchPath -Encoding utf8 -Force
     
-    # Create a workspace settings directory
-    $workspaceSettingsDir = Join-Path $workspaceDir ".vscode"
-    if (-not (Test-Path $workspaceSettingsDir)) {
-        New-Item -Path $workspaceSettingsDir -ItemType Directory -Force | Out-Null
-    }
-    
     # Create workspace-specific settings.json
-    $workspaceSettingsPath = Join-Path $workspaceSettingsDir "settings.json"
+    $workspaceSettingsPath = Join-Path $launchDirPath "settings.json"
     $workspaceSettings = @{
         "python.defaultInterpreterPath" = $pythonVenvPath
         "python.analysis.extraPaths" = @("${workspaceDir}\.venv\Lib\site-packages")
@@ -282,9 +276,10 @@ if ($vscodeExePath -and (Test-Path $vscodeExePath)) {
     
     Write-Host "VSCode configuration completed."
 } else {
-    Write-Host "Warning: VSCode executable not found at any expected location. Skipping configuration."
+    Write-Host "Skipping VSCode configuration - executable not found."
 }
-# inject extensions
+
+# Create workspace extensions recommendation
 $vscodeWorkspaceVscode = Join-Path $workspaceDir ".vscode"
 if (-not (Test-Path $vscodeWorkspaceVscode)) {
     New-Item -ItemType Directory -Path $vscodeWorkspaceVscode | Out-Null
@@ -385,24 +380,34 @@ print("\nEverything is working! You're ready to start developing with Python.")
     Write-Host "  - Test script: $testScriptPath" 
     Write-Host "  - VSCode workspace: $workspaceFilePath"
 }
-# verify uv/python workspace is in $PATH
+
+# Verify uv/python workspace is in $PATH
 $env:PATH = "$($workspaceDir)\.venv\Scripts;$env:PATH"
 if (-not (Test-Path $pythonVenvPath)) {
     Write-Error "ERROR: Virtual environment was not correctly created!"
     exit 1
 }
-# Launch VSCode as the last step with the workspace folder
+
+# SINGLE VSCode launch at the end - only if VSCode was found and configured
 if ($vscodeExePath -and (Test-Path $vscodeExePath)) {
     Write-Host "Launching VSCode with workspace..."
+    
+    # Wait a moment to ensure all file operations are complete
+    Start-Sleep -Seconds 2
+    
     # Use the workspace file instead of just the directory
     $workspaceFilePath = Join-Path $workspaceDir "python-dev.code-workspace"
     if (Test-Path $workspaceFilePath) {
-        Start-Process $vscodeExePath -ArgumentList "--reuse-window `"$workspaceFilePath`""
+        # Use Start-Process with -PassThru to get a handle, but don't wait for it
+        $vscodeProcess = Start-Process $vscodeExePath -ArgumentList "--reuse-window `"$workspaceFilePath`"" -PassThru
+        Write-Host "VSCode launched with PID: $($vscodeProcess.Id)"
     } else {
-        Start-Process $vscodeExePath -ArgumentList "$workspaceDir"
+        # Fallback to directory launch
+        $vscodeProcess = Start-Process $vscodeExePath -ArgumentList "--reuse-window `"$workspaceDir`"" -PassThru  
+        Write-Host "VSCode launched with directory, PID: $($vscodeProcess.Id)"
     }
 } else {
-    Write-Host "Could not launch VSCode - executable not found."
+    Write-Host "VSCode not launched - executable not found or not configured."
 }
 
 Write-Host "scoop_setup.ps1 script completed successfully."
