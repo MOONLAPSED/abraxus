@@ -19,8 +19,6 @@ from dataclasses import dataclass, field
 T = TypeVar("T")
 V = TypeVar("V") 
 C = TypeVar("C")
-
-# Reuse your existing FrameModel and __Atom__ classes
 class FrameModel(Generic[T, V, C]):
     """Represents a frame with delimited content."""
     

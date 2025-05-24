@@ -140,6 +140,13 @@ class CommandBenchmark:
     def run(self) -> float:
         best = sys.maxsize
         for _ in range(self.iterations):
+            start_time = time.time()
+            try:
+                subprocess.run(self.command, check=True, capture_output=True, text=True)
+            except:
+                logger.error(f"An error occurred: {e}")
+            end_time = time.time()
+            return end_time - start_time
 
 class SystemProfiler:
     """Handles system profiling and performance measurements"""

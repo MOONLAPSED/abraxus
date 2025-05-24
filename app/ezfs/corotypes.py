@@ -36,7 +36,6 @@ class __Atom__(ABC):
     def cleanup(self) -> None:
         """Cleanup resources when the atom is no longer referenced."""
         pass
-# Covariant type variables for the dual holographic system
 T_co = TypeVar('T_co', covariant=True)
 V_co = TypeVar('V_co', covariant=True)
 C_co = TypeVar('C_co', bound=Callable, covariant=True)
@@ -58,7 +57,7 @@ class AsyncAtom(__Atom__, Generic[T_co, V_co, C_co], ABC):
         value: Optional[V_co] = None,
         ttl: Optional[int] = None,
         request_data: Optional[Dict[str, Any]] = None,
-        buffer_size: int = 1024 * 64  # default buffer: 64KB
+        buffer_size: int = 1024 * 64  # default 64KB
     ):
         super().__init__()
         self._code = code
@@ -86,52 +85,70 @@ class AsyncAtom(__Atom__, Generic[T_co, V_co, C_co], ABC):
         return False  # Propagate exceptions
 
     async def cleanup(self) -> None:
-        # Cancel pending tasks
-        for task in self._pending_tasks:
+        print(f"Cleaning up atom {id(self)}")
+        for task in list(self._pending_tasks): # Iterate over a copy as set is modified
             if not task.done():
                 task.cancel()
-        # Clear internal resources
+                try:
+                    await task # Await cancellation if needed, handle CancelledError
+                except asyncio.CancelledError:
+                    pass
+        self._pending_tasks.clear() # Ensure set is empty
         self._buffer = bytearray(0)
         self._local_env.clear()
 
     async def __call__(self, *args: Any, **kwargs: Any) -> Any:
         self._last_access_time = time.time()
         async with self._lock:
-            local_env = self._local_env.copy()
+            # Create a controlled environment
+            execution_namespace: Dict[str, Any] = {
+                '__builtins__': __builtins__, # Or a restricted set
+                'asyncio': asyncio,
+                'time': time, # Example: expose some modules
+                '__atom_self__': self, # Allow access to the atom instance itself
+                # Add other necessary imports/objects here
+            }
+            # Copy local state into the execution namespace
+            execution_namespace.update(self._local_env)
+
         try:
-            # Determine if the code is asynchronous
-            is_async = self._is_async_code(self._code)
-            code_obj = compile(self._code, '<atom>', 'exec')
-            local_env.update({
-                'args': args,
-                'kwargs': kwargs,
-                '__atom_self__': self
-            })
-            if is_async:
-                namespace: Dict[str, Any] = {}
-                exec(code_obj, globals(), namespace)
-                main_func = namespace.get('main')
-                if main_func and asyncio.iscoroutinefunction(main_func):
-                    result = await main_func(*args, **kwargs)
-                else:
-                    for name, func in namespace.items():
-                        if asyncio.iscoroutinefunction(func) and name != 'main':
-                            result = await func(*args, **kwargs)
-                            break
-                    else:
-                        raise ValueError(
-                            "No async function found in async code")
-            else:
-                exec(code_obj, globals(), local_env)
-                result = local_env.get('__return__')
+            # Wrap the user code in a standard async function definition
+            # This assumes the user code is the *body* of the function
+            # A more robust approach would be to require the user code *define* the function
+            # For simplicity here, let's assume the code *is* the function body
+            # This is still risky if the code isn't just a function body
+            # A better way: require the code string *define* `async def atom_entrypoint(...)`
+            wrapped_code = f"async def atom_entrypoint(__atom_self__, *args, **kwargs):\n{self._code}"
+
+            code_obj = compile(wrapped_code, '<atom>', 'exec')
+
+            # Execute the definition in the controlled namespace
+            exec(code_obj, execution_namespace)
+
+            # Get the defined function
+            main_func = execution_namespace.get('atom_entrypoint')
+
+            if not main_func or not asyncio.iscoroutinefunction(main_func):
+                raise ValueError("Code must define an async function 'atom_entrypoint'")
+
+            # Call the function, passing necessary context
+            result = await main_func(__atom_self__=self, *args, **kwargs)
+
             async with self._lock:
-                # Update shared local environment (excluding reserved keys)
-                for k, v in local_env.items():
-                    if k not in ('args', 'kwargs', '__atom_self__') and k in self._local_env:
-                        self._local_env[k] = v
+                # Update shared local environment from the execution namespace
+                # Be explicit about what state is shared/persisted
+                # Maybe only update keys that were explicitly marked for persistence?
+                # Or update all keys *except* builtins, args, kwargs, etc.
+                # Let's update all keys except the ones we injected for execution context
+                reserved_keys = {'__builtins__', 'asyncio', 'time', '__atom_self__', 'atom_entrypoint', 'args', 'kwargs'} # Add others as needed
+                for k, v in execution_namespace.items():
+                    if k not in reserved_keys:
+                        self._local_env[k] = v # This now allows new variables to persist
+
             return result
         except Exception as e:
-            raise RuntimeError(f"Error executing AsyncAtom code: {e}")
+            print(f"Error executing AsyncAtom code: {e}") # Use a proper logger
+            raise RuntimeError(f"Error executing AsyncAtom code: {e}") from e # Chain exception
 
     def _is_async_code(self, code: str) -> bool:
         try:
@@ -288,10 +305,42 @@ class DemoAtom(AsyncAtom[Any, Any, Any]):
         # Demo implementation - just print the response
         print(f"Response logged: {result}")
 
-async def main():
-    async with DemoAtom("async def main():\n    return 'Hello, World!'") as atom:
+async def test_main_example():
+    async with DemoAtom("    return 'Hello, World!'") as atom:
         result = await atom()
-        print(result)  # Output: Hello, World!
+        assert result == 'Hello, World!'
+        print("test_main_example passed")
+
+async def test_reference_counting_and_cleanup():
+    async with DemoAtom("    return 42") as atom:
+        initial_refcount = atom.ob_refcnt
+        atom.inc_ref()
+        assert atom.ob_refcnt == initial_refcount + 1
+        atom.dec_ref()
+        assert atom.ob_refcnt == initial_refcount
+        await atom.cleanup()
+        print("test_reference_counting_and_cleanup passed")
+
+async def test_demoatom_methods():
+    async with DemoAtom("    return 'test'") as atom:
+        authenticated = await atom.is_authenticated()
+        assert authenticated is True
+        await atom.log_request()
+        result = await atom.execute_atom({})
+        assert result["status"] == "success"
+        memory = await atom.query_memory({})
+        assert memory["status"] == "success"
+        processed = await atom.process_request({})
+        assert processed["status"] == "success"
+        await atom.save_session()
+        await atom.log_response({"status": "ok"})
+        print("test_demoatom_methods passed")
+
+async def run_tests():
+    await test_main_example()
+    await test_reference_counting_and_cleanup()
+    await test_demoatom_methods()
+    print("All tests passed")
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(run_tests())
