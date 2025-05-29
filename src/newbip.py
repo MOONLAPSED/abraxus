@@ -316,3 +316,22 @@ class HermitianMorphism(Generic[T, V, C, T_anti, V_anti, C_anti]):
     def __call__(self, source: T, value: V) -> C:
         """Make the morphism callable directly"""
         return self.apply(source, value)
+
+
+# Define a MorphologicalBasis with simple matrices
+basis = MorphologicalBasis(
+    type_structure="TopologyA",
+    value_space=[1, 2, 3],    # Could be a vector or state list
+    compute_space=Matrix.identity(3)
+)
+
+# A generator matrix representing an infinitesimal symmetry
+generator = Matrix([
+    [0, -1, 0],
+    [1, 0, 0],
+    [0, 0, 0]
+])
+
+# Evolve the basis for time t=0.1
+new_basis = basis.evolve(generator, time=0.1)
+print(new_basis.compute_space)
