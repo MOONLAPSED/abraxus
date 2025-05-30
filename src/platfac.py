@@ -96,7 +96,15 @@ class BasicDetector(PlatformDetector):
         return ProcessorFeatures.BASIC
 
 
+def main():
+    detector = PlatformFactory.get_detector()
+    features = detector.detect_features()
+    print(features.value)
+    print(features.name)
+
+
 # Example usage
 if __name__ == "__main__":
+    main()
     features = ProcessorFeatures.detect_features()
     print(f"Detected features: {features.__dict__}")
