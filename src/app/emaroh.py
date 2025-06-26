@@ -1,7 +1,7 @@
 import time
 from functools import wraps
 
-def temporal_mro_decorator(cls):
+def TemporalMro(cls):
     """Decorator to track and analyze computation in a class with high precision."""
     
     class TemporalMixin:
@@ -41,7 +41,7 @@ def temporal_mro_decorator(cls):
     return type(cls.__name__, (cls, TemporalMixin), namespace)
 
 if __name__ == "__main__":
-    @temporal_mro_decorator
+    @TemporalMro
     class MyTimedClass():
         def method1(self, arg):
             print(f"Method1 called with arg: {arg}")

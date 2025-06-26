@@ -62,25 +62,16 @@ from typing import (
     Any, Dict, List, Optional, Union, Callable, TypeVar, Tuple, Generic, Set, Iterator, OrderedDict,
     Coroutine, Type, NamedTuple, ClassVar, Protocol, runtime_checkable, AsyncIterator,
 )
-try:
-    from .__init__ import __all__
-    if not __all__:
-        __all__ = []
-    else:
-        __all__ += __file__
-except ImportError:
-    __all__ = []
-    __all__ += __file__
+#---------------------------------------------------------------------------
+# System/App (threading, tracing)
+#---------------------------------------------------------------------------
 IS_WINDOWS = os.name == 'nt'
 IS_POSIX = os.name == 'posix'
-# Configure logger
 logger = logging.getLogger("lognosis")
 logger.setLevel(logging.DEBUG)
-
 # Define a custom formatter
 class CustomFormatter(Formatter):
     def format(self, record):
-        # Base format
         timestamp = datetime.datetime.fromtimestamp(record.created).strftime('%Y-%m-%d %H:%M:%S,%f')[:-3]
         level = f"{record.levelname:<8}"
         message = record.getMessage()
@@ -96,19 +87,15 @@ class CustomFormatter(Formatter):
         reset = "\033[0m"
         colored_level = f"{color_map.get(record.levelname, '')}{level}{reset}"
         return f"{timestamp} - {colored_level} - {message} {source}"
-
-# Add handler with custom formatter
 handler = StreamHandler()
 handler.setFormatter(CustomFormatter())
 logger.addHandler(handler)
-
 def log_module_info(module_name, metadata, runtime_info, exports):
     logger.info(f"Module '{module_name}' metadata captured.")
     logger.debug(f"Metadata details: {metadata}")
     logger.info(f"Module '{module_name}' runtime info: {runtime_info}")
     if exports:
         logger.info(f"Module '{module_name}' exports: {exports}")
-
 #---------------------------------------------------------------------------
 # BaseModel (no-copy immutable dataclasses for data models)
 #---------------------------------------------------------------------------
@@ -193,7 +180,7 @@ def load_files_as_models(root_dir: pathlib.Path, file_extensions: List[str]) -> 
             model_name, instance = create_model_from_file(file_path)
             if model_name and instance:
                 models[model_name] = instance
-                sys.modules[model_name] = instance
+                sys.modules[model_name] = instance # type: ignore
     return models
 def mapper(mapping_description: Mapping, input_data: Dict[str, Any]):
     def transform(xform, value):

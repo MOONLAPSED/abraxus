@@ -1,2 +1,0 @@
-
-"smart_sources:kb/knowledgebase/programming/tries.md": {"path":"kb/knowledgebase/programming/tries.md","last_embed":{"hash":null},"embeddings":{},"last_read":{"hash":"cd6f0c0518186435e4f95df0b7b0937f93dae7a977c72957f6cd9a3a1da9d032","at":1746149408989},"class_name":"SmartSource","outlinks":[{"title":"bloom filter","target":"bloom filter","line":5}],"blocks":{"#data-structure":[1,5],"#data-structure#{1}":[2,5]},"last_import":{"mtime":1745801683801,"size":207,"at":1746149408989,"hash":"cd6f0c0518186435e4f95df0b7b0937f93dae7a977c72957f6cd9a3a1da9d032"}},

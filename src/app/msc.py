@@ -1,3 +1,68 @@
+from __future__ import annotations
+#---------------------------------------------------------------------------
+# Standard Library Imports - 3.13 std libs **ONLY**
+#---------------------------------------------------------------------------
+import re
+import os
+import io
+import dis
+import sys
+import ast
+import time
+import site
+import mmap
+import json
+import uuid
+import shlex
+import errno
+import socket
+import struct
+import shutil
+import pickle
+import pstats
+import random
+import ctypes
+import signal
+import logging
+import tomllib
+import weakref
+import pathlib
+import asyncio
+import inspect
+import hashlib
+import tempfile
+import cProfile
+import argparse
+import platform
+import datetime
+import traceback
+import functools
+import linecache
+import importlib
+import threading
+import subprocess
+import tracemalloc
+import http.server
+import collections
+from io import StringIO
+from array import array
+from pathlib import Path
+from enum import Enum, auto, StrEnum, IntEnum
+from queue import Queue, Empty
+from abc import ABC, abstractmethod
+from threading import Thread, RLock
+from dataclasses import dataclass, field
+from logging import Formatter, StreamHandler
+from collections.abc import Iterable, Mapping
+from concurrent.futures import ThreadPoolExecutor
+from functools import reduce, lru_cache, partial, wraps
+from contextlib import contextmanager, asynccontextmanager, AbstractContextManager
+from importlib.util import spec_from_file_location, module_from_spec
+from types import SimpleNamespace, ModuleType,  MethodType, FunctionType, CodeType, TracebackType, FrameType
+from typing import (
+    Any, Dict, List, Optional, Union, Callable, TypeVar, Tuple, Generic, Set, Iterator, OrderedDict,
+    Coroutine, Type, NamedTuple, ClassVar, Protocol, runtime_checkable, AsyncIterator,
+)
 #------------------------------------------------------------------------------
 # Morphological Source Code: A Framework for Symmetry and Transformation
 #------------------------------------------------------------------------------
@@ -41,12 +106,6 @@ quantum-like behaviors through innovative software design.
 #------------------------------------------------------------------------------
 # Define the core types and enumerations that will be used throughout the 
 # Morphological Source Code framework.
-
-from typing import TypeVar, Callable, Any, Union, Generic, Protocol
-from enum import Enum
-import hashlib
-
-# Type variables for generic programming
 T = TypeVar('T', bound=Any)  # Type variable for type structures
 V = TypeVar('V', bound=Union[int, float, str, bool, list, dict, tuple, set, object, Callable, type])  # Value variable
 C = TypeVar('C', bound=Callable[..., Any])  # Callable variable
