@@ -58,7 +58,7 @@ from typing import (
     Coroutine, Type, NamedTuple, ClassVar, Protocol, runtime_checkable, AsyncIterator, Iterator
 )
 try:
-    from .__init__ import __all__
+    from .. import __all__
     if not __all__:
         __all__ = []
     else:

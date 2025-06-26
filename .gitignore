@@ -4,6 +4,10 @@
 /KnowledgeBase/*
 filesystem_metadata.json
 /kb/*
+
+
+
+
 #### public ####
 !/kb/assets/
 !/kb/assets/pub/
@@ -21,6 +25,8 @@ node_modules/
 .obsidian/
 /.smtcmp_json_db/
 .smtcmp_vector_db.tar*
+/.smart-env/*
+.smart-env/
 
 # Ignore system and user-specific files
 .bash_history
@@ -51,4 +57,3 @@ __pycache__/
 /.pdm-build/*
 pdm.lock
 .venv/
-.SCRATCH
