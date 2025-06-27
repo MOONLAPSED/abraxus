@@ -333,5 +333,5 @@ generator = Matrix([
 ])
 
 # Evolve the basis for time t=0.1
-new_basis = basis.evolve(generator, time=0.1)
+new_basis = basis.evolve(generator, time=1.0)
 print(new_basis.compute_space)
